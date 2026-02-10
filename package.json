@@ -1,0 +1,23 @@
+{
+  "name": "nova-particles",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next-generation 3D particle system creator with WebGPU compute shaders and node-based visual editor",
+  "author": "Nova Particles Team",
+  "license": "MIT",
+  "scripts": {
+    "dev": "pnpm --filter @nova-particles/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
