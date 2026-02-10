@@ -1,0 +1,51 @@
+{
+  "name": "@nova-particles/core",
+  "version": "0.1.0",
+  "description": "GPU-accelerated particle system engine using Three.js TSL and WebGPU compute shaders",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "three": ">=0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "three": "^0.172.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.4.0",
+    "vite-plugin-dts": "^4.0.0",
+    "vitest": "^4.0.18"
+  },
+  "keywords": [
+    "particle",
+    "particles",
+    "vfx",
+    "webgpu",
+    "three.js",
+    "threejs",
+    "tsl",
+    "compute-shader",
+    "gpu"
+  ],
+  "license": "MIT"
+}
