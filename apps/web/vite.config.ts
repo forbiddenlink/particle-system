@@ -7,6 +7,14 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split Three.js + TSL into separate cacheable chunk
+          three: ['three', 'three/tsl'],
+        },
+      },
+    },
   },
   optimizeDeps: {
     esbuildOptions: {

@@ -25,7 +25,6 @@ import {
   billboarding,
 } from 'three/tsl';
 import type { ParticleSystemConfig, ValueRange, TrailConfig } from './types.js';
-import { createEmitter } from './emitters.js';
 import { AnimationCurve, ColorGradient } from './curves.js';
 
 /** Number of samples for curve lookup tables */
@@ -97,7 +96,11 @@ export class ParticleSystem extends THREE.Object3D {
     lifetime: uniform(new THREE.Vector2(1, 2)), // min, max
     emissionRate: uniform(100),
     emitterRadius: uniform(0),
-    emitterType: uniform(0), // 0: point, 1: sphere, 2: box, 3: cone
+    emitterType: uniform(0), // 0: point, 1: sphere, 2: box, 3: cone, 4: circle
+    emitterBoxSize: uniform(new THREE.Vector3(1, 1, 1)), // Box emitter size
+    emitterConeAngle: uniform(Math.PI / 4), // Cone emitter angle (radians)
+    emitterConeRadius: uniform(0.5), // Cone emitter base radius
+    emitterCircleArc: uniform(Math.PI * 2), // Circle emitter arc (radians)
     // Force uniforms
     drag: uniform(0), // Drag coefficient (0-1)
     windDirection: uniform(new THREE.Vector3(0, 0, 0)), // Wind direction * strength
@@ -162,8 +165,30 @@ export class ParticleSystem extends THREE.Object3D {
       };
     }
 
-    // Initialize emitter (used for CPU-side config)
-    createEmitter(config.emitter);
+    // Initialize emitter uniforms from config
+    if (config.emitter) {
+      const emitterTypes: Record<string, number> = {
+        point: 0,
+        sphere: 1,
+        box: 2,
+        cone: 3,
+        circle: 4,
+      };
+      this.uniforms.emitterType.value = emitterTypes[config.emitter.type] ?? 0;
+
+      if (config.emitter.radius !== undefined) {
+        this.uniforms.emitterRadius.value = config.emitter.radius;
+      }
+      if (config.emitter.size) {
+        this.uniforms.emitterBoxSize.value.copy(config.emitter.size);
+      }
+      if (config.emitter.angle !== undefined) {
+        this.uniforms.emitterConeAngle.value = config.emitter.angle;
+      }
+      if (config.emitter.arc !== undefined) {
+        this.uniforms.emitterCircleArc.value = config.emitter.arc;
+      }
+    }
 
     this.initBuffers();
     this.initMaterial();
@@ -392,10 +417,10 @@ export class ParticleSystem extends THREE.Object3D {
       const theta = seed.mul(PI2);
       const phi = acos(seed2.mul(2).sub(1));
 
-      // Point emitter: all at origin
+      // Type 0: Point emitter - all at origin
       const pointPos = vec3(0, 0, 0);
 
-      // Sphere emitter: random point in sphere
+      // Type 1: Sphere emitter - random point in sphere
       const r = sqrt(seed3).mul(radius);
       const spherePos = vec3(
         sin(phi).mul(cos(theta)).mul(r),
@@ -403,8 +428,46 @@ export class ParticleSystem extends THREE.Object3D {
         cos(phi).mul(r)
       );
 
-      // Select position based on emitter type
-      const pos = mix(pointPos, spherePos, emitterType.greaterThan(0).toFloat());
+      // Type 2: Box emitter - random point in box
+      const boxSize = uniforms.emitterBoxSize;
+      const boxPos = vec3(
+        seed.sub(0.5).mul(boxSize.x),
+        seed2.sub(0.5).mul(boxSize.y),
+        seed3.sub(0.5).mul(boxSize.z)
+      );
+
+      // Type 3: Cone emitter - random point on base circle
+      const coneRadius = uniforms.emitterConeRadius;
+      const coneR = sqrt(seed2).mul(coneRadius);
+      const conePos = vec3(
+        coneR.mul(cos(theta)),
+        float(0),
+        coneR.mul(sin(theta))
+      );
+
+      // Type 4: Circle emitter - random point on circle
+      const circleArc = uniforms.emitterCircleArc;
+      const circleTheta = seed.mul(circleArc);
+      const circleR = sqrt(seed2).mul(radius);
+      const circlePos = vec3(
+        circleR.mul(cos(circleTheta)),
+        float(0),
+        circleR.mul(sin(circleTheta))
+      );
+
+      // Select position based on emitter type using cascading mix
+      // 0=point, 1=sphere, 2=box, 3=cone, 4=circle
+      const isSphere = emitterType.equal(1).toFloat();
+      const isBox = emitterType.equal(2).toFloat();
+      const isCone = emitterType.equal(3).toFloat();
+      const isCircle = emitterType.equal(4).toFloat();
+
+      const pos = vec3(0, 0, 0);
+      pos.addAssign(pointPos.mul(float(1).sub(isSphere).sub(isBox).sub(isCone).sub(isCircle)));
+      pos.addAssign(spherePos.mul(isSphere));
+      pos.addAssign(boxPos.mul(isBox));
+      pos.addAssign(conePos.mul(isCone));
+      pos.addAssign(circlePos.mul(isCircle));
       pos.addAssign(uniforms.emitterPosition);
 
       positionStorage.element(i).assign(pos);
@@ -416,11 +479,33 @@ export class ParticleSystem extends THREE.Object3D {
         seed
       );
 
-      const velDir = vec3(
+      // Random spherical direction (for point/sphere emitters)
+      const randomDir = vec3(
         sin(phi).mul(cos(theta)),
         sin(phi).mul(sin(theta)),
         cos(phi)
       );
+
+      // Upward direction (for box/circle emitters)
+      const upDir = vec3(0, 1, 0);
+
+      // Cone direction - within cone angle
+      const coneAngle = uniforms.emitterConeAngle;
+      const coneTiltAngle = seed3.mul(coneAngle);
+      const coneBaseAngle = theta; // Use same theta for consistency
+      const coneDir = vec3(
+        sin(coneTiltAngle).mul(cos(coneBaseAngle)),
+        cos(coneTiltAngle),
+        sin(coneTiltAngle).mul(sin(coneBaseAngle))
+      );
+
+      // Select velocity direction based on emitter type
+      const velDir = vec3(0, 0, 0);
+      velDir.addAssign(randomDir.mul(isSphere.add(float(1).sub(isSphere).sub(isBox).sub(isCone).sub(isCircle))));
+      velDir.addAssign(upDir.mul(isBox));
+      velDir.addAssign(coneDir.mul(isCone));
+      velDir.addAssign(upDir.mul(isCircle));
+
       velocityStorage.element(i).assign(velDir.mul(speed));
 
       // Color
@@ -566,24 +651,87 @@ export class ParticleSystem extends THREE.Object3D {
         const r = sqrt(respawnSeed3).mul(radius);
         const emitterType = uniforms.emitterType;
 
+        // Type 0: Point emitter
         const pointPos = vec3(0, 0, 0);
+
+        // Type 1: Sphere emitter
         const spherePos = vec3(
           sin(phi).mul(cos(theta)).mul(r),
           sin(phi).mul(sin(theta)).mul(r),
           cos(phi).mul(r)
         );
 
-        const newPos = mix(pointPos, spherePos, emitterType.greaterThan(0).toFloat());
+        // Type 2: Box emitter
+        const boxSize = uniforms.emitterBoxSize;
+        const boxPos = vec3(
+          respawnSeed.sub(0.5).mul(boxSize.x),
+          respawnSeed2.sub(0.5).mul(boxSize.y),
+          respawnSeed3.sub(0.5).mul(boxSize.z)
+        );
+
+        // Type 3: Cone emitter
+        const coneRadius = uniforms.emitterConeRadius;
+        const coneR = sqrt(respawnSeed2).mul(coneRadius);
+        const conePos = vec3(
+          coneR.mul(cos(theta)),
+          float(0),
+          coneR.mul(sin(theta))
+        );
+
+        // Type 4: Circle emitter
+        const circleArc = uniforms.emitterCircleArc;
+        const circleTheta = respawnSeed.mul(circleArc);
+        const circleR = sqrt(respawnSeed2).mul(radius);
+        const circlePos = vec3(
+          circleR.mul(cos(circleTheta)),
+          float(0),
+          circleR.mul(sin(circleTheta))
+        );
+
+        // Select position based on emitter type
+        const isSphere = emitterType.equal(1).toFloat();
+        const isBox = emitterType.equal(2).toFloat();
+        const isCone = emitterType.equal(3).toFloat();
+        const isCircle = emitterType.equal(4).toFloat();
+
+        const newPos = vec3(0, 0, 0);
+        newPos.addAssign(pointPos.mul(float(1).sub(isSphere).sub(isBox).sub(isCone).sub(isCircle)));
+        newPos.addAssign(spherePos.mul(isSphere));
+        newPos.addAssign(boxPos.mul(isBox));
+        newPos.addAssign(conePos.mul(isCone));
+        newPos.addAssign(circlePos.mul(isCircle));
         newPos.addAssign(uniforms.emitterPosition);
         positionStorage.element(i).assign(newPos);
 
-        // Reset velocity with random direction
+        // Reset velocity with appropriate direction for emitter type
         const speed = mix(uniforms.startSpeed.x, uniforms.startSpeed.y, respawnSeed);
-        const velDir = vec3(
+
+        // Random spherical direction
+        const randomDir = vec3(
           sin(phi).mul(cos(theta)),
           sin(phi).mul(sin(theta)),
           cos(phi)
         );
+
+        // Upward direction
+        const upDir = vec3(0, 1, 0);
+
+        // Cone direction
+        const coneAngle = uniforms.emitterConeAngle;
+        const coneTiltAngle = respawnSeed3.mul(coneAngle);
+        const coneDir = vec3(
+          sin(coneTiltAngle).mul(cos(theta)),
+          cos(coneTiltAngle),
+          sin(coneTiltAngle).mul(sin(theta))
+        );
+
+        // Select velocity direction
+        const velDir = vec3(0, 0, 0);
+        velDir.addAssign(randomDir.mul(isSphere.add(float(1).sub(isSphere).sub(isBox).sub(isCone).sub(isCircle))));
+        velDir.addAssign(upDir.mul(isBox));
+        velDir.addAssign(coneDir.mul(isCone));
+        velDir.addAssign(upDir.mul(isCircle));
+
         velocityStorage.element(i).assign(velDir.mul(speed));
 
         // Reset life
