@@ -13,6 +13,7 @@ const gravitySlider = document.getElementById('gravity-slider') as HTMLInputElem
 const dragSlider = document.getElementById('drag-slider') as HTMLInputElement;
 const windSlider = document.getElementById('wind-slider') as HTMLInputElement;
 const vortexSlider = document.getElementById('vortex-slider') as HTMLInputElement;
+const trailsCheckbox = document.getElementById('trails-checkbox') as HTMLInputElement;
 
 // Preset buttons
 const presetDefault = document.getElementById('preset-default')!;
@@ -52,7 +53,8 @@ scene.add(gridHelper);
 
 // Particle system
 let particleSystem: ParticleSystem | null = null;
-let currentParticleCount = 100000;
+let currentParticleCount = 50000;
+let trailsEnabled = false;
 
 async function createParticleSystem(count: number): Promise<void> {
   // Dispose old system
@@ -60,31 +62,36 @@ async function createParticleSystem(count: number): Promise<void> {
     scene.remove(particleSystem);
     particleSystem.dispose();
   }
-  
+
   // Create new system
   particleSystem = new ParticleSystem({
     maxParticles: count,
-    lifetime: { min: 2, max: 4 },
-    startSpeed: { min: 3, max: 8 },
-    startSize: { min: 0.05, max: 0.15 },
+    lifetime: { min: 2, max: 5 },
+    startSpeed: { min: 2, max: 6 },
+    startSize: { min: 0.08, max: 0.2 },
     startColor: new THREE.Color(0x8b5cf6),
-    emissionRate: count / 3,
+    emissionRate: count / 4,
     emitter: {
       type: 'sphere',
-      radius: 0.5,
+      radius: 1.5,
       radiusThickness: 1,
     },
     blendMode: 'additive',
     gravity: new THREE.Vector3(0, parseFloat(gravitySlider.value), 0),
+    trails: {
+      enabled: trailsEnabled,
+      length: 8,
+      fadeAlpha: true,
+    },
   });
-  
+
   particleSystem.position.set(0, 0, 0);
   scene.add(particleSystem);
-  
+
   // Initialize and start
   await particleSystem.init(renderer);
   particleSystem.play();
-  
+
   // Update UI
   particleCountEl.textContent = count.toLocaleString();
   currentParticleCount = count;
@@ -174,6 +181,12 @@ vortexSlider.addEventListener('input', () => {
     const vortexStrength = parseFloat(vortexSlider.value);
     particleSystem.setVortex(0, 0, 0, 0, 1, 0, vortexStrength);
   }
+});
+
+trailsCheckbox.addEventListener('change', async () => {
+  trailsEnabled = trailsCheckbox.checked;
+  // Recreate particle system with trails enabled/disabled
+  await createParticleSystem(currentParticleCount);
 });
 
 // Effect preset handlers

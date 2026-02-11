@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
     <title>Nova Particles - GPU Particle System Demo</title>
     <style>
       * {
@@ -148,8 +149,8 @@
       <button id="reset-btn">Reset</button>
       <label>
         Particles:
-        <input type="range" id="particle-slider" min="1000" max="500000" value="100000" step="1000" />
-        <span id="particle-slider-value">100,000</span>
+        <input type="range" id="particle-slider" min="1000" max="500000" value="50000" step="1000" />
+        <span id="particle-slider-value">50,000</span>
       </label>
       <label>
         Gravity:
@@ -166,6 +167,10 @@
       <label>
         Vortex:
         <input type="range" id="vortex-slider" min="-10" max="10" value="0" step="0.5" />
+      </label>
+      <label>
+        <input type="checkbox" id="trails-checkbox" />
+        Trails
       </label>
     </div>
 

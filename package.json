@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "pnpm --filter @nova-particles/web dev",
     "build": "pnpm -r build",
+    "test": "pnpm --filter @nova-particles/core test",
+    "preview": "pnpm --filter @nova-particles/web preview",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean"

@@ -40,4 +40,5 @@ export type {
   GradientStop,
   ParticleAttributes,
   ParticleSystemState,
+  TrailConfig,
 } from './types.js';

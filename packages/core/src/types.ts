@@ -83,6 +83,19 @@ export interface ParticleSystemConfig {
 
   /** Drag coefficient (0-1, slows particles over time) */
   drag?: number;
+
+  /** Trail rendering configuration */
+  trails?: TrailConfig;
+}
+
+/** Configuration for particle trails */
+export interface TrailConfig {
+  /** Whether trails are enabled */
+  enabled: boolean;
+  /** Number of positions to store per particle (default: 8) */
+  length?: number;
+  /** Whether to fade trail alpha from newest to oldest (default: true) */
+  fadeAlpha?: boolean;
 }
 
 /** Emitter shape types */
