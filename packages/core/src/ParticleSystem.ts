@@ -26,9 +26,20 @@ import {
 } from 'three/tsl';
 import type { ParticleSystemConfig, ValueRange, TrailConfig } from './types.js';
 import { AnimationCurve, ColorGradient } from './curves.js';
-
-/** Number of samples for curve lookup tables */
-const CURVE_SAMPLES = 16;
+import { CURVE_SAMPLES } from './uniforms.js';
+import {
+  createParticleBuffers,
+  createParticleStorageNodes,
+  createTrailBuffers,
+  createTrailStorageNodes,
+  disposeParticleBuffers,
+  disposeTrailBuffers,
+  type ParticleBuffers,
+  type ParticleStorageNodes,
+  type TrailBuffers,
+  type TrailStorageNodes,
+} from './buffers.js';
+import { createTrailCompute } from './compute-shaders.js';
 
 /** Default number of positions to store per particle for trails */
 const DEFAULT_TRAIL_LENGTH = 8;
@@ -46,17 +57,11 @@ export class ParticleSystem extends THREE.Object3D {
 
   private renderer: THREE.WebGPURenderer | null = null;
 
-  // GPU Storage Buffers
-  private positionBuffer!: THREE.StorageBufferAttribute;
-  private velocityBuffer!: THREE.StorageBufferAttribute;
-  private colorBuffer!: THREE.StorageBufferAttribute;
-  private lifeBuffer!: THREE.StorageBufferAttribute; // x: currentLife, y: maxLife
-  private sizeBuffer!: THREE.StorageBufferAttribute;
-  private rotationBuffer!: THREE.StorageBufferAttribute;
-
-  // Trail buffers
-  private trailBuffer: THREE.StorageBufferAttribute | null = null;
-  private trailIndexBuffer: THREE.StorageBufferAttribute | null = null;
+  // Buffer and storage containers
+  private particleBuffers!: ParticleBuffers;
+  private particleStorage!: ParticleStorageNodes;
+  private trailBuffers: TrailBuffers | null = null;
+  private trailStorageNodes: TrailStorageNodes | null = null;
 
   // TSL Storage nodes
   private positionStorage: ReturnType<typeof storage> | null = null;
@@ -70,11 +75,7 @@ export class ParticleSystem extends THREE.Object3D {
   // Trail storage nodes
   private trailStorage: ReturnType<typeof storage> | null = null;
   private trailIndexStorage: ReturnType<typeof storage> | null = null;
-
-  // Flattened trail vertex buffer for line segments
-  private trailVertexBuffer: THREE.StorageBufferAttribute | null = null;
   private trailVertexStorage: ReturnType<typeof storage> | null = null;
-  private trailColorVertexBuffer: THREE.StorageBufferAttribute | null = null;
   private trailColorVertexStorage: ReturnType<typeof storage> | null = null;
 
   // Compute shaders
@@ -202,80 +203,30 @@ export class ParticleSystem extends THREE.Object3D {
     const count = this.maxParticles;
     const trailLength = this.trailConfig.length;
 
-    // Position: vec3 per particle
-    this.positionBuffer = new THREE.StorageBufferAttribute(
-      new Float32Array(count * 3),
-      3
-    );
+    // Create core particle buffers and storage nodes
+    this.particleBuffers = createParticleBuffers(count);
+    this.particleStorage = createParticleStorageNodes(this.particleBuffers, count);
 
-    // Velocity: vec3 per particle
-    this.velocityBuffer = new THREE.StorageBufferAttribute(
-      new Float32Array(count * 3),
-      3
-    );
+    // Alias storage nodes for use in compute shaders and materials
+    this.positionStorage = this.particleStorage.position;
+    this.velocityStorage = this.particleStorage.velocity;
+    this.colorStorage = this.particleStorage.color;
+    this.lifeStorage = this.particleStorage.life;
+    this.sizeStorage = this.particleStorage.size;
+    this.rotationStorage = this.particleStorage.rotation;
 
-    // Color: vec4 per particle (RGBA)
-    this.colorBuffer = new THREE.StorageBufferAttribute(
-      new Float32Array(count * 4),
-      4
-    );
+    // Trail buffers - only allocate when trails are enabled to save GPU memory
+    // For 100K particles with 8 trail positions, this saves ~9.6MB of GPU memory
+    if (this.trailConfig.enabled) {
+      this.trailBuffers = createTrailBuffers(count, trailLength);
+      this.trailStorageNodes = createTrailStorageNodes(this.trailBuffers, count, trailLength);
 
-    // Life: vec2 per particle (currentLife, maxLife)
-    this.lifeBuffer = new THREE.StorageBufferAttribute(
-      new Float32Array(count * 2),
-      2
-    );
-
-    // Size: float per particle
-    this.sizeBuffer = new THREE.StorageBufferAttribute(
-      new Float32Array(count),
-      1
-    );
-
-    // Rotation: float per particle
-    this.rotationBuffer = new THREE.StorageBufferAttribute(
-      new Float32Array(count),
-      1
-    );
-
-    // Trail buffers (always allocated, but only used when enabled)
-    // Trail positions: TRAIL_LENGTH vec3s per particle
-    this.trailBuffer = new THREE.StorageBufferAttribute(
-      new Float32Array(count * trailLength * 3),
-      3
-    );
-
-    // Trail index: current write position in ring buffer per particle
-    this.trailIndexBuffer = new THREE.StorageBufferAttribute(
-      new Uint32Array(count),
-      1
-    );
-
-    // Create TSL storage nodes
-    this.positionStorage = storage(this.positionBuffer, 'vec3', count);
-    this.velocityStorage = storage(this.velocityBuffer, 'vec3', count);
-    this.colorStorage = storage(this.colorBuffer, 'vec4', count);
-    this.lifeStorage = storage(this.lifeBuffer, 'vec2', count);
-    this.sizeStorage = storage(this.sizeBuffer, 'float', count);
-    this.rotationStorage = storage(this.rotationBuffer, 'float', count);
-
-    // Trail storage nodes
-    this.trailStorage = storage(this.trailBuffer, 'vec3', count * trailLength);
-    this.trailIndexStorage = storage(this.trailIndexBuffer, 'uint', count);
-
-    // Trail vertex buffers for line segment rendering
-    // Each particle has (trailLength - 1) line segments = 2 * (trailLength - 1) vertices
-    const trailVertexCount = count * (trailLength - 1) * 2;
-    this.trailVertexBuffer = new THREE.StorageBufferAttribute(
-      new Float32Array(trailVertexCount * 3),
-      3
-    );
-    this.trailColorVertexBuffer = new THREE.StorageBufferAttribute(
-      new Float32Array(trailVertexCount * 4),
-      4
-    );
-    this.trailVertexStorage = storage(this.trailVertexBuffer, 'vec3', trailVertexCount);
-    this.trailColorVertexStorage = storage(this.trailColorVertexBuffer, 'vec4', trailVertexCount);
+      // Alias storage nodes for use in compute shaders and materials
+      this.trailStorage = this.trailStorageNodes.trail;
+      this.trailIndexStorage = this.trailStorageNodes.trailIndex;
+      this.trailVertexStorage = this.trailStorageNodes.trailVertex;
+      this.trailColorVertexStorage = this.trailStorageNodes.trailColorVertex;
+    }
   }
 
   /**
@@ -332,8 +283,14 @@ export class ParticleSystem extends THREE.Object3D {
 
   /**
    * Initialize trail mesh for rendering particle trails as line segments
+   * Only initializes if trails are enabled (buffers must be allocated)
    */
   private initTrailMesh(): void {
+    // Skip if trails not enabled - buffers won't be allocated
+    if (!this.trailConfig.enabled) {
+      return;
+    }
+
     const count = this.maxParticles;
     const trailLength = this.trailConfig.length;
     const segmentsPerParticle = trailLength - 1;
@@ -370,7 +327,7 @@ export class ParticleSystem extends THREE.Object3D {
     // Create mesh
     this.trailMesh = new THREE.LineSegments(this.trailGeometry, this.trailMaterial);
     this.trailMesh.frustumCulled = false;
-    this.trailMesh.visible = this.trailConfig.enabled;
+    this.trailMesh.visible = true;
 
     this.add(this.trailMesh);
   }
@@ -381,6 +338,7 @@ export class ParticleSystem extends THREE.Object3D {
   private initComputeShaders(): void {
     const count = this.maxParticles;
     const trailLength = this.trailConfig.length;
+    const trailsEnabled = this.trailConfig.enabled;
 
     const positionStorage = this.positionStorage!;
     const velocityStorage = this.velocityStorage!;
@@ -388,8 +346,9 @@ export class ParticleSystem extends THREE.Object3D {
     const lifeStorage = this.lifeStorage!;
     const sizeStorage = this.sizeStorage!;
     const rotationStorage = this.rotationStorage!;
-    const trailStorage = this.trailStorage!;
-    const trailIndexStorage = this.trailIndexStorage!;
+    // Trail storage is only available when trails are enabled
+    const trailStorage = trailsEnabled ? this.trailStorage! : null;
+    const trailIndexStorage = trailsEnabled ? this.trailIndexStorage! : null;
     const trailLengthConst = int(trailLength);
     const uniforms = this.uniforms;
 
@@ -524,13 +483,16 @@ export class ParticleSystem extends THREE.Object3D {
 
       // Initialize trail: set all trail positions to the initial particle position
       // This prevents trails from having (0,0,0) segments initially
-      const particleTrailBase = i.mul(trailLengthConst);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      Loop({ start: int(0), end: trailLengthConst, type: 'int', condition: '<' }, ({ i: j }: { i: any }) => {
-        trailStorage.element(particleTrailBase.add(j)).assign(pos);
-      });
-      // Start trail index at 0
-      trailIndexStorage.element(i).assign(int(0));
+      // Only include trail code when trails are enabled (JavaScript conditional)
+      if (trailStorage && trailIndexStorage) {
+        const particleTrailBase = i.mul(trailLengthConst);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Loop({ start: int(0), end: trailLengthConst, type: 'int', condition: '<' }, ({ i: j }: { i: any }) => {
+          trailStorage.element(particleTrailBase.add(j)).assign(pos);
+        });
+        // Start trail index at 0
+        trailIndexStorage.element(i).assign(int(0));
+      }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     })() as any).compute(count, [64]);
 
@@ -746,106 +708,47 @@ export class ParticleSystem extends THREE.Object3D {
         colorStorage.element(i).assign(uniforms.startColor);
 
         // Reset trail: set all trail positions to new spawn position
-        const particleTrailBase = i.mul(trailLengthConst);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        Loop({ start: int(0), end: trailLengthConst, type: 'int', condition: '<' }, ({ i: j }: { i: any }) => {
-          trailStorage.element(particleTrailBase.add(j)).assign(newPos);
-        });
-        // Reset trail index
-        trailIndexStorage.element(i).assign(int(0));
+        // Only include trail code when trails are enabled (JavaScript conditional)
+        if (trailStorage && trailIndexStorage) {
+          const particleTrailBase = i.mul(trailLengthConst);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          Loop({ start: int(0), end: trailLengthConst, type: 'int', condition: '<' }, ({ i: j }: { i: any }) => {
+            trailStorage.element(particleTrailBase.add(j)).assign(newPos);
+          });
+          // Reset trail index
+          trailIndexStorage.element(i).assign(int(0));
+        }
       });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     })() as any).compute(count, [64]);
 
     // Trail compute - updates trail ring buffer and flattens to line segments
-    this.initTrailCompute();
+    // Only initialize when trails are enabled
+    if (trailsEnabled) {
+      this.initTrailCompute();
+    }
   }
 
   /**
    * Initialize trail compute shader
    */
   private initTrailCompute(): void {
-    const count = this.maxParticles;
-    const trailLength = this.trailConfig.length;
-
-    const positionStorage = this.positionStorage!;
-    const colorStorage = this.colorStorage!;
-    const lifeStorage = this.lifeStorage!;
-    const trailStorage = this.trailStorage!;
-    const trailIndexStorage = this.trailIndexStorage!;
-    const trailVertexStorage = this.trailVertexStorage!;
-    const trailColorVertexStorage = this.trailColorVertexStorage!;
-    const trailLengthUniform = uniform(trailLength);
-    const fadeAlphaUniform = uniform(this.trailConfig.fadeAlpha ? 1 : 0);
-
-    // @ts-expect-error - TSL compute shaders don't return values
-    this.trailCompute = (Fn(() => {
-      const i = instanceIndex;
-
-      // Get current trail write index for this particle
-      const trailIdx = trailIndexStorage.element(i);
-
-      // Get particle state
-      const pos = positionStorage.element(i);
-      const color = colorStorage.element(i);
-      const life = lifeStorage.element(i);
-      const currentLife = life.x;
-
-      // Only update trails for alive particles
-      If(currentLife.greaterThan(0), () => {
-        // Calculate base index in trail buffer for this particle
-        const particleTrailBase = i.mul(trailLengthUniform);
-
-        // Write current position to ring buffer at current index
-        const writeIdx = particleTrailBase.add(trailIdx);
-        trailStorage.element(writeIdx).assign(pos);
-
-        // Increment trail index (wrap around)
-        const newTrailIdx = trailIdx.add(int(1)).modInt(trailLengthUniform);
-        trailIndexStorage.element(i).assign(newTrailIdx);
-
-        // Flatten trail to line segment vertices
-        // Each particle has (trailLength - 1) segments = 2 * (trailLength - 1) vertices
-        const segmentsPerParticle = trailLengthUniform.sub(int(1));
-        const verticesPerParticle = segmentsPerParticle.mul(int(2));
-        const vertexBase = i.mul(verticesPerParticle);
-
-        // Loop through segments (unrolled for small trail lengths)
-        // For each segment j: vertex[2j] = trail[(newTrailIdx + j) % trailLength]
-        //                     vertex[2j+1] = trail[(newTrailIdx + j + 1) % trailLength]
-        // This reads oldest to newest positions
-        // Note: Using a simpler approach - just output all trail positions as segments
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        Loop({ start: int(0), end: segmentsPerParticle, type: 'int', condition: '<' }, ({ i: j }: { i: any }) => {
-          // Read positions from ring buffer in order (oldest first)
-          const idx0 = particleTrailBase.add(newTrailIdx.add(j).modInt(trailLengthUniform));
-          const idx1 = particleTrailBase.add(newTrailIdx.add(j).add(int(1)).modInt(trailLengthUniform));
-
-          const pos0 = trailStorage.element(idx0);
-          const pos1 = trailStorage.element(idx1);
-
-          // Write to vertex buffer
-          const vIdx0 = vertexBase.add(j.mul(int(2)));
-          const vIdx1 = vIdx0.add(int(1));
-
-          trailVertexStorage.element(vIdx0).assign(pos0);
-          trailVertexStorage.element(vIdx1).assign(pos1);
-
-          // Calculate alpha fade (oldest = 0, newest = 1)
-          const segmentAge = float(j).div(float(segmentsPerParticle));
-          const alpha0 = mix(float(1), segmentAge, fadeAlphaUniform);
-          const alpha1 = mix(float(1), segmentAge.add(float(1).div(float(segmentsPerParticle))), fadeAlphaUniform);
-
-          // Write colors with faded alpha
-          const color0 = vec4(color.x, color.y, color.z, color.w.mul(alpha0));
-          const color1 = vec4(color.x, color.y, color.z, color.w.mul(alpha1));
-
-          trailColorVertexStorage.element(vIdx0).assign(color0);
-          trailColorVertexStorage.element(vIdx1).assign(color1);
-        });
-      });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    })() as any).compute(count, [64]);
+    this.trailCompute = createTrailCompute(
+      {
+        position: this.positionStorage!,
+        color: this.colorStorage!,
+        life: this.lifeStorage!,
+        trail: this.trailStorage!,
+        trailIndex: this.trailIndexStorage!,
+        trailVertex: this.trailVertexStorage!,
+        trailColorVertex: this.trailColorVertexStorage!,
+      },
+      {
+        maxParticles: this.maxParticles,
+        trailLength: this.trailConfig.length,
+        fadeAlpha: this.trailConfig.fadeAlpha,
+      }
+    );
   }
 
   /**
@@ -1077,31 +980,55 @@ export class ParticleSystem extends THREE.Object3D {
    * Dispose of all resources
    */
   dispose(): void {
+    // Stop playback
+    this.isPlaying = false;
+    this.isInitialized = false;
+
+    // Dispose Three.js objects
     this.mesh.geometry.dispose();
     this.material.dispose();
 
     // Dispose trail resources
     if (this.trailGeometry) {
       this.trailGeometry.dispose();
+      this.trailGeometry = null;
     }
     if (this.trailMaterial) {
       this.trailMaterial.dispose();
+      this.trailMaterial = null;
+    }
+    if (this.trailMesh) {
+      this.remove(this.trailMesh);
+      this.trailMesh = null;
     }
 
-    // Dispose buffers
-    this.positionBuffer.array = new Float32Array(0);
-    this.velocityBuffer.array = new Float32Array(0);
-    this.colorBuffer.array = new Float32Array(0);
-    this.lifeBuffer.array = new Float32Array(0);
-    this.sizeBuffer.array = new Float32Array(0);
-    this.rotationBuffer.array = new Float32Array(0);
+    // Clear storage buffer references to help GC release GPU resources
+    disposeParticleBuffers(this.particleBuffers);
 
-    if (this.trailBuffer) {
-      this.trailBuffer.array = new Float32Array(0);
+    if (this.trailBuffers) {
+      disposeTrailBuffers(this.trailBuffers);
+      this.trailBuffers = null;
     }
-    if (this.trailIndexBuffer) {
-      this.trailIndexBuffer.array = new Uint32Array(0);
-    }
+
+    // Clear TSL storage node references
+    this.positionStorage = null;
+    this.velocityStorage = null;
+    this.colorStorage = null;
+    this.lifeStorage = null;
+    this.sizeStorage = null;
+    this.rotationStorage = null;
+    this.trailStorage = null;
+    this.trailIndexStorage = null;
+    this.trailVertexStorage = null;
+    this.trailColorVertexStorage = null;
+
+    // Clear compute shader references
+    this.initCompute = null;
+    this.updateCompute = null;
+    this.trailCompute = null;
+
+    // Clear renderer reference
+    this.renderer = null;
   }
 }
 
