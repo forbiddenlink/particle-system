@@ -1,26 +1,39 @@
-import * as THREE from 'three/webgpu';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ParticleSystem, AnimationCurve, ColorGradient } from '@nova-particles/core';
+import * as THREE from "three/webgpu";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import {
+  ParticleSystem,
+  AnimationCurve,
+  ColorGradient,
+} from "@nova-particles/core";
+import "./style.css";
 
 // DOM elements
-const fpsEl = document.getElementById('fps')!;
-const backendEl = document.getElementById('backend')!;
-const particleCountEl = document.getElementById('particle-count')!;
-const resetBtn = document.getElementById('reset-btn')!;
-const particleSlider = document.getElementById('particle-slider') as HTMLInputElement;
-const particleSliderValue = document.getElementById('particle-slider-value')!;
-const gravitySlider = document.getElementById('gravity-slider') as HTMLInputElement;
-const dragSlider = document.getElementById('drag-slider') as HTMLInputElement;
-const windSlider = document.getElementById('wind-slider') as HTMLInputElement;
-const vortexSlider = document.getElementById('vortex-slider') as HTMLInputElement;
-const trailsCheckbox = document.getElementById('trails-checkbox') as HTMLInputElement;
+const fpsEl = document.getElementById("fps")!;
+const backendEl = document.getElementById("backend")!;
+const particleCountEl = document.getElementById("particle-count")!;
+const resetBtn = document.getElementById("reset-btn")!;
+const particleSlider = document.getElementById(
+  "particle-slider",
+) as HTMLInputElement;
+const particleSliderValue = document.getElementById("particle-slider-value")!;
+const gravitySlider = document.getElementById(
+  "gravity-slider",
+) as HTMLInputElement;
+const dragSlider = document.getElementById("drag-slider") as HTMLInputElement;
+const windSlider = document.getElementById("wind-slider") as HTMLInputElement;
+const vortexSlider = document.getElementById(
+  "vortex-slider",
+) as HTMLInputElement;
+const trailsCheckbox = document.getElementById(
+  "trails-checkbox",
+) as HTMLInputElement;
 
 // Preset buttons
-const presetDefault = document.getElementById('preset-default')!;
-const presetFire = document.getElementById('preset-fire')!;
-const presetSmoke = document.getElementById('preset-smoke')!;
-const presetMagic = document.getElementById('preset-magic')!;
-const presetRainbow = document.getElementById('preset-rainbow')!;
+const presetDefault = document.getElementById("preset-default")!;
+const presetFire = document.getElementById("preset-fire")!;
+const presetSmoke = document.getElementById("preset-smoke")!;
+const presetMagic = document.getElementById("preset-magic")!;
+const presetRainbow = document.getElementById("preset-rainbow")!;
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -31,7 +44,7 @@ const camera = new THREE.PerspectiveCamera(
   60,
   window.innerWidth / window.innerHeight,
   0.1,
-  1000
+  1000,
 );
 camera.position.set(0, 5, 15);
 
@@ -57,10 +70,12 @@ let currentParticleCount = 50000;
 let trailsEnabled = false;
 
 async function createParticleSystem(count: number): Promise<void> {
-  // Dispose old system
+  // Dispose old system and clear reference immediately
   if (particleSystem) {
-    scene.remove(particleSystem);
-    particleSystem.dispose();
+    const oldSystem = particleSystem;
+    particleSystem = null; // Clear reference before disposal to prevent use-after-dispose
+    scene.remove(oldSystem);
+    oldSystem.dispose();
   }
 
   // Create new system
@@ -72,11 +87,11 @@ async function createParticleSystem(count: number): Promise<void> {
     startColor: new THREE.Color(0x8b5cf6),
     emissionRate: count / 4,
     emitter: {
-      type: 'sphere',
+      type: "sphere",
       radius: 1.5,
       radiusThickness: 1,
     },
-    blendMode: 'additive',
+    blendMode: "additive",
     gravity: new THREE.Vector3(0, parseFloat(gravitySlider.value), 0),
     trails: {
       enabled: trailsEnabled,
@@ -106,7 +121,7 @@ function updateFPS(): void {
   frameCount++;
   const currentTime = performance.now();
   const elapsed = currentTime - lastTime;
-  
+
   if (elapsed >= 1000) {
     fps = Math.round((frameCount * 1000) / elapsed);
     fpsEl.textContent = fps.toString();
@@ -118,79 +133,97 @@ function updateFPS(): void {
 // Clock for delta time
 const clock = new THREE.Clock();
 
-// Animation loop
-async function animate(): Promise<void> {
+// Animation loop - uses a flag to prevent overlapping GPU operations
+let isAnimating = false;
+
+function animate(): void {
+  // Prevent overlapping frames when GPU operations take longer than frame time
+  if (isAnimating) {
+    requestAnimationFrame(animate);
+    return;
+  }
+
   const dt = clock.getDelta();
-  
+
   // Update controls
   controls.update();
-  
+
   // Update particle system
   if (particleSystem) {
-    await particleSystem.update(dt);
+    isAnimating = true;
+    particleSystem
+      .update(dt)
+      .then(() => {
+        // Render after GPU compute completes
+        renderer.render(scene, camera);
+        updateFPS();
+        isAnimating = false;
+        requestAnimationFrame(animate);
+      })
+      .catch((err) => {
+        console.error("Particle update error:", err);
+        isAnimating = false;
+        requestAnimationFrame(animate);
+      });
+  } else {
+    // No particle system, just render
+    renderer.render(scene, camera);
+    updateFPS();
+    requestAnimationFrame(animate);
   }
-  
-  // Render
-  renderer.render(scene, camera);
-  
-  // Update FPS display
-  updateFPS();
-  
-  // Continue loop
-  requestAnimationFrame(animate);
 }
 
 // Event handlers
-resetBtn.addEventListener('click', async () => {
+resetBtn.addEventListener("click", async () => {
   if (particleSystem) {
     await particleSystem.reset();
   }
 });
 
-particleSlider.addEventListener('input', () => {
+particleSlider.addEventListener("input", () => {
   const value = parseInt(particleSlider.value);
   particleSliderValue.textContent = value.toLocaleString();
 });
 
-particleSlider.addEventListener('change', async () => {
+particleSlider.addEventListener("change", async () => {
   const value = parseInt(particleSlider.value);
   await createParticleSystem(value);
 });
 
-gravitySlider.addEventListener('input', () => {
+gravitySlider.addEventListener("input", () => {
   if (particleSystem) {
     particleSystem.setGravity(0, parseFloat(gravitySlider.value), 0);
   }
 });
 
-dragSlider.addEventListener('input', () => {
+dragSlider.addEventListener("input", () => {
   if (particleSystem) {
     particleSystem.setDrag(parseFloat(dragSlider.value));
   }
 });
 
-windSlider.addEventListener('input', () => {
+windSlider.addEventListener("input", () => {
   if (particleSystem) {
     const windStrength = parseFloat(windSlider.value);
     particleSystem.setWind(windStrength, 0, 0);
   }
 });
 
-vortexSlider.addEventListener('input', () => {
+vortexSlider.addEventListener("input", () => {
   if (particleSystem) {
     const vortexStrength = parseFloat(vortexSlider.value);
     particleSystem.setVortex(0, 0, 0, 0, 1, 0, vortexStrength);
   }
 });
 
-trailsCheckbox.addEventListener('change', async () => {
+trailsCheckbox.addEventListener("change", async () => {
   trailsEnabled = trailsCheckbox.checked;
   // Recreate particle system with trails enabled/disabled
   await createParticleSystem(currentParticleCount);
 });
 
 // Effect preset handlers
-presetDefault.addEventListener('click', () => {
+presetDefault.addEventListener("click", () => {
   if (particleSystem) {
     particleSystem.clearCurves();
     particleSystem.clearForces();
@@ -198,7 +231,7 @@ presetDefault.addEventListener('click', () => {
   }
 });
 
-presetFire.addEventListener('click', () => {
+presetFire.addEventListener("click", () => {
   if (particleSystem) {
     // Fire effect: grow then shrink, fire colors
     particleSystem.setSizeOverLifetime(AnimationCurve.pulse());
@@ -208,7 +241,7 @@ presetFire.addEventListener('click', () => {
   }
 });
 
-presetSmoke.addEventListener('click', () => {
+presetSmoke.addEventListener("click", () => {
   if (particleSystem) {
     // Smoke effect: grow over time, gray colors
     const growCurve = new AnimationCurve([
@@ -224,7 +257,7 @@ presetSmoke.addEventListener('click', () => {
   }
 });
 
-presetMagic.addEventListener('click', () => {
+presetMagic.addEventListener("click", () => {
   if (particleSystem) {
     // Magic effect: sparkle, purple colors
     const sparkleCurve = new AnimationCurve([
@@ -240,7 +273,7 @@ presetMagic.addEventListener('click', () => {
   }
 });
 
-presetRainbow.addEventListener('click', () => {
+presetRainbow.addEventListener("click", () => {
   if (particleSystem) {
     // Rainbow effect: constant size, rainbow colors
     particleSystem.setSizeOverLifetime(AnimationCurve.constant(1));
@@ -251,7 +284,7 @@ presetRainbow.addEventListener('click', () => {
 });
 
 // Handle resize
-window.addEventListener('resize', () => {
+window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -259,26 +292,47 @@ window.addEventListener('resize', () => {
 
 // Initialize
 async function init(): Promise<void> {
-  console.log('🌟 Nova Particles - Initializing...');
-  
+  console.log("🌟 Nova Particles - Initializing...");
+
   // Initialize renderer
   await renderer.init();
-  
+
   // Detect backend
   // @ts-ignore - backend property exists at runtime
-  const backend = renderer.backend?.constructor?.name || 'Unknown';
-  backendEl.textContent = backend.includes('WebGPU') ? 'WebGPU ✓' : 'WebGL (fallback)';
-  
+  const backend = renderer.backend?.constructor?.name || "Unknown";
+  backendEl.textContent = backend.includes("WebGPU")
+    ? "WebGPU ✓"
+    : "WebGL (fallback)";
+
   console.log(`Using backend: ${backend}`);
-  
+
   // Create initial particle system
   await createParticleSystem(currentParticleCount);
-  
-  console.log('✅ Nova Particles initialized!');
-  console.log(`Rendering ${currentParticleCount.toLocaleString()} particles with GPU compute shaders`);
-  
+
+  console.log("✅ Nova Particles initialized!");
+  console.log(
+    `Rendering ${currentParticleCount.toLocaleString()} particles with GPU compute shaders`,
+  );
+
   // Start animation loop
   animate();
 }
 
-init().catch(console.error);
+init().catch((error) => {
+  console.error("Initialization failed:", error);
+  // Show user-facing error for WebGPU failures
+  const errorDiv = document.createElement("div");
+  errorDiv.style.cssText = `
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9); color: white; padding: 40px;
+    border-radius: 12px; text-align: center; font-family: system-ui, sans-serif;
+    max-width: 500px; z-index: 1000;
+  `;
+  errorDiv.innerHTML = `
+    <h2 style="color: #ff6b6b; margin-bottom: 20px;">⚠️ Initialization Failed</h2>
+    <p style="margin-bottom: 15px;">WebGPU may not be supported in your browser.</p>
+    <p style="color: #888; font-size: 14px;">Please try Chrome 113+, Edge 113+, or Safari 26+ with WebGPU enabled.</p>
+    <p style="color: #666; font-size: 12px; margin-top: 20px;">Error: ${error.message || error}</p>
+  `;
+  document.body.appendChild(errorDiv);
+});

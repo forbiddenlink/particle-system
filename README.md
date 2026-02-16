@@ -1,130 +1,78 @@
-# 🌟 Nova Particles
+# ✨ Nova Particles
 
-> Next-generation 3D particle system creator with WebGPU compute shaders and node-based visual editor.
+![Nova Particles Banner](docs/images/banner.png)
 
-Nova Particles is a GPU-accelerated particle system engine for Three.js that can simulate **millions of particles at 60fps** by running physics entirely on the GPU using WebGPU compute shaders via TSL (Three.js Shading Language).
+> **Next-Generation GPU Particle System**
+> 
+> Simulate millions of particles at 60fps in your browser using WebGPU compute shaders.
 
-## ✨ Features
+Nova Particles is a high-performance particle engine built with **Three.js** and **WebGPU**. By leveraging compute shaders (via TSL - Three.js Shading Language), it offloads all physics calculations to the GPU, enabling massive simulations that were previously impossible in the browser.
 
-- **GPU-First Architecture**: Simulate 1M+ particles at 60fps using WebGPU compute shaders
-- **Cross-Platform**: TSL-based shaders work on both WebGPU and WebGL (automatic fallback)
-- **Modern API**: TypeScript-first with intuitive configuration
-- **Flexible Emitters**: Point, Sphere, Box, Cone, Circle shapes
-- **Rich Behaviors**: Gravity, size/color over lifetime, opacity fade
-- **High Performance**: All simulation runs on GPU storage buffers
+## 🚀 Features
 
-## 📦 Packages
+- **Massive Scale**: Render 1M+ particles effortlessly at 60fps.
+- **GPU-First Architecture**: Physics, collision, and behavior all run on the GPU.
+- **WebGPU Powered**: Utilizes modern compute shaders for maximum parallelism.
+- **Flexible Emitters**: Support for Point, Sphere, Box, Cone, and Circle shapes.
+- **Advanced Behaviors**: Gravity, Drag, Wind, Vortex, and Noise forces.
+- **Rich Visuals**: Trail rendering, additive blending, and dynamic color gradients.
+- **Cross-Platform**: Built for WebGPU with graceful fallbacks (where applicable).
 
-- `@nova-particles/core` - GPU particle engine
-- `@nova-particles/editor` - Visual node-based editor (coming soon)
-- `@nova-particles/presets` - Built-in effect presets (coming soon)
+## 📦 Tech Stack
 
-## 🚀 Quick Start
+- **Core**: [Three.js](https://threejs.org/) (WebGPU Renderer)
+- **Language**: TypeScript
+- **Build Tool**: Vite (for the web app)
+- **Package Manager**: pnpm
 
-```bash
-# Install dependencies
-pnpm install
+## 🛠️ Getting Started
 
-# Run demo
-pnpm dev
-```
+### Prerequisites
 
-## 💻 Usage
+- **Node.js**: v18+
+- **pnpm**: v8+
+- **Browser**: Chrome 113+, Edge 113+, or Safari 18+ (WebGPU support required)
 
-```typescript
-import * as THREE from 'three/webgpu';
-import { ParticleSystem } from '@nova-particles/core';
+### Installation
 
-// Create particle system
-const particles = new ParticleSystem({
-  maxParticles: 100_000,
-  lifetime: { min: 2, max: 4 },
-  startSpeed: { min: 3, max: 8 },
-  startSize: { min: 0.05, max: 0.15 },
-  emitter: {
-    type: 'sphere',
-    radius: 1,
-  },
-  blendMode: 'additive',
-});
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/nova-particles.git
+   cd nova-particles
+   ```
 
-// Add to scene
-scene.add(particles);
+2. **Install dependencies:**
+   ```bash
+   pnpm install
+   ```
 
-// Initialize with WebGPU renderer
-await particles.init(renderer);
-particles.play();
+3. **Run the development server:**
+   ```bash
+   pnpm dev
+   ```
 
-// Update every frame
-function animate() {
-  particles.update(clock.getDelta());
-  renderer.render(scene, camera);
-  requestAnimationFrame(animate);
-}
-```
+4. **Open in browser:**
+   Navigate to `http://localhost:5173` to see the demo.
 
-## 🏗️ Architecture
+## 🎮 Usage Controls
 
-Nova Particles uses a modern GPU-first architecture:
+- **Left Click + Drag**: Rotate camera
+- **Right Click + Drag**: Pan camera
+- **Scroll**: Zoom in/out
+- **UI Controls**:
+  - Adjust particle count (up to 1M)
+  - Tweak physics (gravity, drag, wind)
+  - Toggle trails
+  - Select presets (Fire, Smoke, Magic, Rainbow)
 
-1. **Storage Buffers**: Particle data (position, velocity, color, life) stored in GPU memory
-2. **Compute Shaders**: Physics simulation runs entirely on GPU via TSL
-3. **Instanced Rendering**: Efficient rendering with billboarded sprites
-4. **Double Buffering**: Ping-pong buffers for read/write separation
+## 🧩 Architecture
 
-### Why GPU Compute?
+Nova Particles uses a **Structure of Arrays (SoA)** approach in GPU storage buffers to maximize cache efficiency.
 
-Traditional CPU-based particle systems hit bottlenecks at ~100k particles due to:
-- CPU cycles on parallel work
-- CPU→GPU data transfer every frame
-
-GPU compute shaders solve this by:
-- Running physics on thousands of GPU cores in parallel
-- Keeping all data on GPU (zero transfer overhead)
-- Achieving 10M+ particles at 60fps
-
-## 🔧 Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Build all packages
-pnpm build
-
-# Run demo with hot reload
-pnpm dev
-
-# Type check
-pnpm typecheck
-```
-
-## 📊 Browser Support
-
-| Browser | Status |
-|---------|--------|
-| Chrome 113+ | ✅ WebGPU |
-| Edge 113+ | ✅ WebGPU |
-| Safari 26+ | ✅ WebGPU |
-| Firefox 141+ | ✅ WebGPU |
-| Older browsers | ⚠️ WebGL fallback |
-
-## 🗺️ Roadmap
-
-- [x] GPU particle system with TSL compute shaders
-- [x] Basic emitter shapes (Point, Sphere, Box, Cone, Circle)
-- [x] Gravity and lifetime behaviors
-- [ ] Forces (turbulence, attractors, wind)
-- [ ] Collision detection
-- [ ] Trail renderer
-- [ ] Node-based visual editor
-- [ ] Preset library
-- [ ] React Three Fiber integration
+1.  **Storage Buffers**: Store position, velocity, life, color, and size data.
+2.  **Compute Shaders**: Update particle state every frame based on physics and behaviors.
+3.  **Vertex Fetch**: The renderer reads directly from these buffers to draw instances, avoiding CPU-GPU data transfer.
 
 ## 📄 License
 
 MIT © Nova Particles Team
-
----
-
-Built with ❤️ using [Three.js](https://threejs.org) and [WebGPU](https://webgpu.io)

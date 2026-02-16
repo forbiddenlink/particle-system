@@ -1,0 +1,2 @@
+packages/core:build:cd /Volumes/LizsDisk/particle-system/packages/core && npm run build
+packages/core:tsc:cd /Volumes/LizsDisk/particle-system/packages/core && npx tsc --noEmit
