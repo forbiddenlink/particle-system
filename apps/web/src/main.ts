@@ -160,7 +160,7 @@ function animate(): void {
         isAnimating = false;
         requestAnimationFrame(animate);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error("Particle update error:", err);
         isAnimating = false;
         requestAnimationFrame(animate);
