@@ -28,7 +28,7 @@ export interface ParticleSystemConfig {
   looping?: boolean;
   
   /** Particle lifetime in seconds */
-  lifetime: number | ValueRange;
+  lifetime?: number | ValueRange;
   
   /** Initial speed of particles */
   startSpeed?: number | ValueRange;

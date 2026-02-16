@@ -1,17 +1,20 @@
 import * as THREE from "three/webgpu";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import {
-  ParticleSystem,
-  AnimationCurve,
-  ColorGradient,
-} from "@nova-particles/core";
+import { ParticleSystem } from "@nova-particles/core";
+import { applyPreset } from "./presets/AdvancedPresets.js";
 import "./style.css";
 
 // DOM elements
 const fpsEl = document.getElementById("fps")!;
 const backendEl = document.getElementById("backend")!;
 const particleCountEl = document.getElementById("particle-count")!;
+const activePresetNameEl = document.getElementById("active-preset-name")!;
+const activePresetDescriptionEl = document.getElementById(
+  "active-preset-description",
+)!;
 const resetBtn = document.getElementById("reset-btn")!;
+const pauseBtn = document.getElementById("pause-btn")!;
+const randomPresetBtn = document.getElementById("random-preset-btn")!;
 const particleSlider = document.getElementById(
   "particle-slider",
 ) as HTMLInputElement;
@@ -30,10 +33,17 @@ const trailsCheckbox = document.getElementById(
 
 // Preset buttons
 const presetDefault = document.getElementById("preset-default")!;
-const presetFire = document.getElementById("preset-fire")!;
-const presetSmoke = document.getElementById("preset-smoke")!;
-const presetMagic = document.getElementById("preset-magic")!;
-const presetRainbow = document.getElementById("preset-rainbow")!;
+const presetFireworks = document.getElementById("preset-fireworks")!;
+const presetNebula = document.getElementById("preset-nebula")!;
+const presetLightning = document.getElementById("preset-lightning")!;
+const presetPortal = document.getElementById("preset-portal")!;
+const presetFireflies = document.getElementById("preset-fireflies")!;
+const presetSnowfall = document.getElementById("preset-snowfall")!;
+const presetEnergy = document.getElementById("preset-energy")!;
+const presetToxic = document.getElementById("preset-toxic")!;
+const presetBlackHole = document.getElementById("preset-blackhole")!;
+const presetAurora = document.getElementById("preset-aurora")!;
+const presetSupernova = document.getElementById("preset-supernova")!;
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -66,8 +76,131 @@ scene.add(gridHelper);
 
 // Particle system
 let particleSystem: ParticleSystem | null = null;
-let currentParticleCount = 50000;
+let currentParticleCount = parseInt(particleSlider.value, 10);
 let trailsEnabled = false;
+let isPaused = false;
+let currentPresetButton: HTMLButtonElement | null = presetDefault as HTMLButtonElement;
+
+interface PresetUIConfig {
+  button: HTMLElement;
+  presetName: string;
+  displayName: string;
+  description: string;
+  sliders: {
+    gravity: number;
+    drag: number;
+    wind: number;
+    vortex: number;
+  };
+}
+
+const presetConfigs: PresetUIConfig[] = [
+  {
+    button: presetFireworks,
+    presetName: "Fireworks",
+    displayName: "Fireworks",
+    description: "Fast explosive launch with warm ember fade.",
+    sliders: { gravity: -15, drag: 0.05, wind: 0, vortex: 0 },
+  },
+  {
+    button: presetNebula,
+    presetName: "Nebula",
+    displayName: "Nebula",
+    description: "Slow cosmic drift with deep magenta-blue transitions.",
+    sliders: { gravity: 0.5, drag: 0.8, wind: 0.5, vortex: 0 },
+  },
+  {
+    button: presetLightning,
+    presetName: "Lightning Storm",
+    displayName: "Lightning",
+    description: "High-energy electric arcs with aggressive swirl.",
+    sliders: { gravity: 0, drag: 0.02, wind: 5, vortex: 8 },
+  },
+  {
+    button: presetPortal,
+    presetName: "Magic Portal",
+    displayName: "Portal",
+    description: "Converging ring pull with mystical color cycling.",
+    sliders: { gravity: 0, drag: 0.1, wind: 0, vortex: 15 },
+  },
+  {
+    button: presetFireflies,
+    presetName: "Fireflies",
+    displayName: "Fireflies",
+    description: "Soft floating pulses for calm ambient motion.",
+    sliders: { gravity: 0.2, drag: 0.5, wind: 0.5, vortex: 0 },
+  },
+  {
+    button: presetSnowfall,
+    presetName: "Snowfall",
+    displayName: "Snowfall",
+    description: "Gentle downward flakes with subtle horizontal drift.",
+    sliders: { gravity: -1, drag: 0.9, wind: 1, vortex: 0 },
+  },
+  {
+    button: presetEnergy,
+    presetName: "Energy Burst",
+    displayName: "Energy",
+    description: "Compressed charge release with bright core flashes.",
+    sliders: { gravity: 0, drag: 0.15, wind: 0, vortex: 0 },
+  },
+  {
+    button: presetToxic,
+    presetName: "Toxic Cloud",
+    displayName: "Toxic",
+    description: "Billowing green gas plume with thick lingering fade.",
+    sliders: { gravity: 1.5, drag: 0.7, wind: 2, vortex: 0 },
+  },
+  {
+    button: presetBlackHole,
+    presetName: "Black Hole",
+    displayName: "Black Hole",
+    description: "Strong inward pull and rapid orbital event-horizon flow.",
+    sliders: { gravity: 0, drag: 0.08, wind: 0, vortex: 20 },
+  },
+  {
+    button: presetAurora,
+    presetName: "Aurora Flow",
+    displayName: "Aurora",
+    description: "Layered ribbon-like lights moving in polar currents.",
+    sliders: { gravity: 0.3, drag: 0.35, wind: 4, vortex: 3 },
+  },
+  {
+    button: presetSupernova,
+    presetName: "Supernova Ring",
+    displayName: "Supernova",
+    description: "Bright stellar blast ring with heated expansion.",
+    sliders: { gravity: -4, drag: 0.03, wind: 0.5, vortex: 6 },
+  },
+];
+
+particleSliderValue.textContent = currentParticleCount.toLocaleString();
+
+function setActivePresetInfo(name: string, description: string): void {
+  activePresetNameEl.textContent = name;
+  activePresetDescriptionEl.textContent = description;
+}
+
+function setActivePresetButton(button: HTMLElement | null): void {
+  if (currentPresetButton) {
+    currentPresetButton.classList.remove("preset-btn-active");
+  }
+
+  if (button && button instanceof HTMLButtonElement) {
+    currentPresetButton = button;
+    currentPresetButton.classList.add("preset-btn-active");
+  } else {
+    currentPresetButton = null;
+  }
+}
+
+function applyDefaultPresetUI(): void {
+  setActivePresetButton(presetDefault);
+  setActivePresetInfo(
+    "Default",
+    "Balanced baseline behavior with no stylized force fields.",
+  );
+}
 
 async function createParticleSystem(count: number): Promise<void> {
   // Dispose old system and clear reference immediately
@@ -106,6 +239,9 @@ async function createParticleSystem(count: number): Promise<void> {
   // Initialize and start
   await particleSystem.init(renderer);
   particleSystem.play();
+  if (isPaused) {
+    particleSystem.stop();
+  }
 
   // Update UI
   particleCountEl.textContent = count.toLocaleString();
@@ -173,115 +309,209 @@ function animate(): void {
   }
 }
 
+// Active preset state
+let activePresetConfig: PresetUIConfig | null = null;
+let isDefaultPresetActive = true;
+
+function updateUISliders(gravity: number, drag: number, wind: number, vortex: number): void {
+  gravitySlider.value = gravity.toString();
+  dragSlider.value = drag.toString();
+  windSlider.value = wind.toString();
+  vortexSlider.value = vortex.toString();
+}
+
+function setPauseUI(): void {
+  pauseBtn.textContent = isPaused ? "Resume" : "Pause";
+  pauseBtn.setAttribute("aria-pressed", isPaused ? "true" : "false");
+}
+
+function applyCurrentForceControls(): void {
+  if (!particleSystem) {
+    return;
+  }
+
+  const gravity = parseFloat(gravitySlider.value);
+  const drag = parseFloat(dragSlider.value);
+  const wind = parseFloat(windSlider.value);
+  const vortex = parseFloat(vortexSlider.value);
+
+  particleSystem.setGravity(0, gravity, 0);
+  particleSystem.setDrag(drag);
+  particleSystem.setWind(wind, 0, 0);
+  particleSystem.setVortex(0, 0, 0, 0, 1, 0, vortex);
+}
+
+function restoreBehaviorAfterRebuild(): void {
+  if (!particleSystem) {
+    return;
+  }
+
+  if (activePresetConfig) {
+    particleSystem.clearCurves();
+    particleSystem.clearForces();
+    applyPreset(particleSystem, activePresetConfig.presetName);
+  } else if (isDefaultPresetActive) {
+    particleSystem.clearCurves();
+    particleSystem.clearForces();
+  }
+
+  applyCurrentForceControls();
+}
+
+function markCustomPreset(): void {
+  activePresetConfig = null;
+  isDefaultPresetActive = false;
+  setActivePresetButton(null);
+  setActivePresetInfo(
+    "Custom",
+    "Manual tuning mode based on your live force and slider adjustments.",
+  );
+}
+
+function applyPresetConfig(config: PresetUIConfig): void {
+  if (!particleSystem) {
+    return;
+  }
+
+  particleSystem.clearCurves();
+  particleSystem.clearForces();
+  const applied = applyPreset(particleSystem, config.presetName);
+
+  if (!applied) {
+    console.warn(`Preset "${config.presetName}" was not found`);
+    return;
+  }
+
+  updateUISliders(
+    config.sliders.gravity,
+    config.sliders.drag,
+    config.sliders.wind,
+    config.sliders.vortex,
+  );
+  applyCurrentForceControls();
+
+  activePresetConfig = config;
+  isDefaultPresetActive = false;
+  setActivePresetButton(config.button);
+  setActivePresetInfo(config.displayName, config.description);
+}
+
+function applyDefaultPreset(): void {
+  if (!particleSystem) {
+    return;
+  }
+
+  particleSystem.clearCurves();
+  particleSystem.clearForces();
+  updateUISliders(-10, 0, 0, 0);
+  applyCurrentForceControls();
+
+  activePresetConfig = null;
+  isDefaultPresetActive = true;
+  applyDefaultPresetUI();
+}
+
+function applyRandomPreset(): void {
+  if (!particleSystem || presetConfigs.length === 0) {
+    return;
+  }
+
+  const pool = presetConfigs.filter((preset) => preset !== activePresetConfig);
+  const candidates = pool.length > 0 ? pool : presetConfigs;
+  const randomPreset = candidates[Math.floor(Math.random() * candidates.length)];
+  applyPresetConfig(randomPreset);
+}
+
 // Event handlers
 resetBtn.addEventListener("click", async () => {
   if (particleSystem) {
     await particleSystem.reset();
   }
+
+  particleSlider.value = "10000";
+  particleSliderValue.textContent = "10,000";
+  gravitySlider.value = "-10";
+  dragSlider.value = "0";
+  windSlider.value = "0";
+  vortexSlider.value = "0";
+  trailsCheckbox.checked = false;
+  trailsEnabled = false;
+  isPaused = false;
+  setPauseUI();
+
+  activePresetConfig = null;
+  isDefaultPresetActive = true;
+  applyDefaultPresetUI();
+
+  currentParticleCount = 10000;
+  await createParticleSystem(currentParticleCount);
+  restoreBehaviorAfterRebuild();
+});
+
+pauseBtn.addEventListener("click", () => {
+  if (!particleSystem) {
+    return;
+  }
+
+  isPaused = !isPaused;
+  if (isPaused) {
+    particleSystem.stop();
+  } else {
+    particleSystem.play();
+  }
+  setPauseUI();
+});
+
+randomPresetBtn.addEventListener("click", () => {
+  applyRandomPreset();
 });
 
 particleSlider.addEventListener("input", () => {
-  const value = parseInt(particleSlider.value);
+  const value = parseInt(particleSlider.value, 10);
   particleSliderValue.textContent = value.toLocaleString();
 });
 
 particleSlider.addEventListener("change", async () => {
-  const value = parseInt(particleSlider.value);
+  const value = parseInt(particleSlider.value, 10);
   await createParticleSystem(value);
+  restoreBehaviorAfterRebuild();
 });
 
 gravitySlider.addEventListener("input", () => {
-  if (particleSystem) {
-    particleSystem.setGravity(0, parseFloat(gravitySlider.value), 0);
-  }
+  applyCurrentForceControls();
+  markCustomPreset();
 });
 
 dragSlider.addEventListener("input", () => {
-  if (particleSystem) {
-    particleSystem.setDrag(parseFloat(dragSlider.value));
-  }
+  applyCurrentForceControls();
+  markCustomPreset();
 });
 
 windSlider.addEventListener("input", () => {
-  if (particleSystem) {
-    const windStrength = parseFloat(windSlider.value);
-    particleSystem.setWind(windStrength, 0, 0);
-  }
+  applyCurrentForceControls();
+  markCustomPreset();
 });
 
 vortexSlider.addEventListener("input", () => {
-  if (particleSystem) {
-    const vortexStrength = parseFloat(vortexSlider.value);
-    particleSystem.setVortex(0, 0, 0, 0, 1, 0, vortexStrength);
-  }
+  applyCurrentForceControls();
+  markCustomPreset();
 });
 
 trailsCheckbox.addEventListener("change", async () => {
   trailsEnabled = trailsCheckbox.checked;
-  // Recreate particle system with trails enabled/disabled
   await createParticleSystem(currentParticleCount);
+  restoreBehaviorAfterRebuild();
 });
 
-// Effect preset handlers
 presetDefault.addEventListener("click", () => {
-  if (particleSystem) {
-    particleSystem.clearCurves();
-    particleSystem.clearForces();
-    particleSystem.setGravity(0, -10, 0);
-  }
+  applyDefaultPreset();
 });
 
-presetFire.addEventListener("click", () => {
-  if (particleSystem) {
-    // Fire effect: grow then shrink, fire colors
-    particleSystem.setSizeOverLifetime(AnimationCurve.pulse());
-    particleSystem.setColorOverLifetime(ColorGradient.fire());
-    particleSystem.setGravity(0, 2, 0); // Fire rises
-    particleSystem.setDrag(0.1);
-  }
-});
-
-presetSmoke.addEventListener("click", () => {
-  if (particleSystem) {
-    // Smoke effect: grow over time, gray colors
-    const growCurve = new AnimationCurve([
-      { time: 0, value: 0.2 },
-      { time: 0.5, value: 1 },
-      { time: 1, value: 1.5 },
-    ]);
-    particleSystem.setSizeOverLifetime(growCurve);
-    particleSystem.setColorOverLifetime(ColorGradient.smoke());
-    particleSystem.setGravity(0, 1, 0); // Smoke rises slowly
-    particleSystem.setDrag(0.3);
-    particleSystem.setWind(2, 0, 0); // Drift with wind
-  }
-});
-
-presetMagic.addEventListener("click", () => {
-  if (particleSystem) {
-    // Magic effect: sparkle, purple colors
-    const sparkleCurve = new AnimationCurve([
-      { time: 0, value: 0.5 },
-      { time: 0.3, value: 1.2 },
-      { time: 0.6, value: 0.8 },
-      { time: 1, value: 0 },
-    ]);
-    particleSystem.setSizeOverLifetime(sparkleCurve);
-    particleSystem.setColorOverLifetime(ColorGradient.magic());
-    particleSystem.setGravity(0, -2, 0);
-    particleSystem.setVortex(0, 0, 0, 0, 1, 0, 3);
-  }
-});
-
-presetRainbow.addEventListener("click", () => {
-  if (particleSystem) {
-    // Rainbow effect: constant size, rainbow colors
-    particleSystem.setSizeOverLifetime(AnimationCurve.constant(1));
-    particleSystem.setColorOverLifetime(ColorGradient.rainbow());
-    particleSystem.setGravity(0, -5, 0);
-    particleSystem.setVortex(0, 2, 0, 0, 1, 0, 2);
-  }
-});
+for (const config of presetConfigs) {
+  config.button.addEventListener("click", () => {
+    applyPresetConfig(config);
+  });
+}
 
 // Handle resize
 window.addEventListener("resize", () => {
@@ -306,8 +536,19 @@ async function init(): Promise<void> {
 
   console.log(`Using backend: ${backend}`);
 
+  // Debug step
+  const { runDebugCompute } = await import('./debug-compute');
+  const debugSuccess = await runDebugCompute(renderer);
+  if (!debugSuccess) {
+    console.error('Debug compute failed, skipping full particle system init');
+    return;
+  }
+
   // Create initial particle system
   await createParticleSystem(currentParticleCount);
+  applyDefaultPresetUI();
+  setPauseUI();
+  restoreBehaviorAfterRebuild();
 
   console.log("✅ Nova Particles initialized!");
   console.log(

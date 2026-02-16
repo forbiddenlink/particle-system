@@ -4,15 +4,17 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0"
     />
 
     <!-- Branding -->
     <title>Nova Particles - Next-Gen GPU Particle System</title>
+    <link rel="canonical" href="http://localhost:3000/" />
     <meta
       name="description"
       content="Experience a high-performance, GPU-accelerated particle system running entirely in your browser using WebGPU. Create fire, smoke, and magic effects."
     />
+    <meta name="author" content="Nova Particles Team" />
 
     <!-- Icons -->
     <link rel="icon" type="image/png" href="/icon.png" />
@@ -41,144 +43,167 @@
     <meta name="twitter:image" content="/og-image.jpg" />
   </head>
   <body>
-    <div id="info" class="panel">
-      <h1>✨ Nova Particles</h1>
-      <p>Next-gen particle system powered by WebGPU compute shaders.</p>
-      <p>
-        Simulating
-        <span id="particle-count" class="stat-value">0</span> particles.
-      </p>
-    </div>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
 
-    <div id="stats" class="panel">
-      <div>FPS: <span id="fps" class="stat-value">0</span></div>
-      <div>
-        Backend: <span id="backend" class="stat-value">detecting...</span>
-      </div>
-    </div>
-
-    <div id="controls" role="group" aria-label="Particle system controls">
-      <button id="reset-btn" class="btn" aria-label="Reset particle system">
-        Reset
-      </button>
-
-      <div class="control-group">
-        <label for="particle-slider">Count</label>
-        <input
-          type="range"
-          id="particle-slider"
-          min="1000"
-          max="1000000"
-          value="50000"
-          step="1000"
-          aria-label="Particle count"
-        />
-        <span
-          id="particle-slider-value"
-          style="min-width: 60px; text-align: right"
-          >50,000</span
-        >
+    <main id="main-content" tabindex="-1">
+      <div id="info" class="panel">
+        <h1>✨ Nova Particles</h1>
+        <p>Next-gen particle system powered by WebGPU compute shaders.</p>
+        <p>
+          Simulating
+          <span id="particle-count" class="stat-value" aria-live="polite">0</span>
+          particles.
+        </p>
+        <p id="active-preset">
+          Preset:
+          <span id="active-preset-name" class="stat-value">Default</span>
+        </p>
+        <p id="active-preset-description">
+          Balanced baseline behavior with no stylized force fields.
+        </p>
       </div>
 
-      <div class="control-group">
-        <label for="gravity-slider">Gravity</label>
-        <input
-          type="range"
-          id="gravity-slider"
-          min="-20"
-          max="20"
-          value="-10"
-          step="0.5"
-          aria-label="Gravity"
-        />
+      <div id="stats" class="panel">
+        <div>FPS: <span id="fps" class="stat-value">0</span></div>
+        <div>
+          Backend: <span id="backend" class="stat-value">detecting...</span>
+        </div>
       </div>
 
-      <div class="control-group">
-        <label for="drag-slider">Drag</label>
-        <input
-          type="range"
-          id="drag-slider"
-          min="0"
-          max="1"
-          value="0"
-          step="0.05"
-          aria-label="Drag"
-        />
+      <div id="controls" role="group" aria-label="Particle system controls">
+        <button id="reset-btn" class="btn">Reset</button>
+        <button id="pause-btn" class="btn" aria-pressed="false">Pause</button>
+        <button id="random-preset-btn" class="btn">Shuffle Preset</button>
+
+        <div class="control-group">
+          <label for="particle-slider">Count</label>
+          <input
+            type="range"
+            id="particle-slider"
+            min="1000"
+            max="1000000"
+            value="10000"
+            step="1000"
+            aria-label="Particle count"
+          />
+          <span
+            id="particle-slider-value"
+            style="min-width: 60px; text-align: right"
+            >10,000</span
+          >
+        </div>
+
+        <div class="control-group">
+          <label for="gravity-slider">Gravity</label>
+          <input
+            type="range"
+            id="gravity-slider"
+            min="-20"
+            max="20"
+            value="-10"
+            step="0.1"
+            aria-label="Gravity"
+          />
+        </div>
+
+        <div class="control-group">
+          <label for="drag-slider">Drag</label>
+          <input
+            type="range"
+            id="drag-slider"
+            min="0"
+            max="1"
+            value="0"
+            step="0.01"
+            aria-label="Drag"
+          />
+        </div>
+
+        <div class="control-group">
+          <label for="wind-slider">Wind</label>
+          <input
+            type="range"
+            id="wind-slider"
+            min="-10"
+            max="10"
+            value="0"
+            step="0.5"
+            aria-label="Wind"
+          />
+        </div>
+
+        <div class="control-group">
+          <label for="vortex-slider">Vortex</label>
+          <input
+            type="range"
+            id="vortex-slider"
+            min="-10"
+            max="20"
+            value="0"
+            step="0.5"
+            aria-label="Vortex"
+          />
+        </div>
+
+        <div class="control-group">
+          <label for="trails-checkbox" style="cursor: pointer">Trails</label>
+          <input type="checkbox" id="trails-checkbox" />
+        </div>
       </div>
 
-      <div class="control-group">
-        <label for="wind-slider">Wind</label>
-        <input
-          type="range"
-          id="wind-slider"
-          min="-10"
-          max="10"
-          value="0"
-          step="0.5"
-          aria-label="Wind"
-        />
+      <div id="presets" role="group" aria-label="Effect presets">
+        <button id="preset-default" class="preset-btn">Default</button>
+        <button id="preset-fireworks" class="preset-btn">🎆 Fireworks</button>
+        <button id="preset-nebula" class="preset-btn">🌌 Nebula</button>
+        <button id="preset-lightning" class="preset-btn">⚡ Lightning</button>
+        <button id="preset-portal" class="preset-btn">🌀 Portal</button>
+        <button id="preset-fireflies" class="preset-btn">✨ Fireflies</button>
+        <button id="preset-snowfall" class="preset-btn">❄️ Snowfall</button>
+        <button id="preset-energy" class="preset-btn">💥 Energy</button>
+        <button id="preset-toxic" class="preset-btn">☢️ Toxic</button>
+        <button id="preset-blackhole" class="preset-btn">🕳️ Black Hole</button>
+        <button id="preset-aurora" class="preset-btn">🌈 Aurora</button>
+        <button id="preset-supernova" class="preset-btn">☀️ Supernova</button>
       </div>
 
-      <div class="control-group">
-        <label for="vortex-slider">Vortex</label>
-        <input
-          type="range"
-          id="vortex-slider"
-          min="-10"
-          max="10"
-          value="0"
-          step="0.5"
-          aria-label="Vortex"
-        />
-      </div>
+      <nav id="site-links" class="panel" aria-label="Site links">
+        <a class="site-link" href="/about/index.html">About</a>
+        <a class="site-link" href="/contact/index.html">Contact</a>
+        <a class="site-link" href="/privacy-policy/index.html">Privacy Policy</a>
+      </nav>
 
-      <div class="control-group">
-        <label for="trails-checkbox" style="cursor: pointer">Trails</label>
-        <input type="checkbox" id="trails-checkbox" />
-      </div>
-    </div>
-
-    <div id="presets" role="group" aria-label="Effect presets">
-      <button
-        id="preset-default"
-        class="preset-btn"
-        aria-label="Apply default effect"
-      >
-        Default
-      </button>
-      <button
-        id="preset-fire"
-        class="preset-btn"
-        id="preset-fire"
-        aria-label="Apply fire effect"
-      >
-        Fire
-      </button>
-      <button
-        id="preset-smoke"
-        class="preset-btn"
-        id="preset-smoke"
-        aria-label="Apply smoke effect"
-      >
-        Smoke
-      </button>
-      <button
-        id="preset-magic"
-        class="preset-btn"
-        id="preset-magic"
-        aria-label="Apply magic effect"
-      >
-        Magic
-      </button>
-      <button
-        id="preset-rainbow"
-        class="preset-btn"
-        id="preset-rainbow"
-        aria-label="Apply rainbow effect"
-      >
-        Rainbow
-      </button>
-    </div>
+      <section class="sr-only" aria-label="Detailed demo description">
+        <h2>About this particle demo</h2>
+        <p>
+          Nova Particles is a browser-based playground for high-density visual effects. The
+          app runs a GPU-driven particle simulation and exposes controls that let you modify
+          particle count, gravity, drag, wind, and vortex forces in real time. You can also
+          enable trails for motion persistence and switch between effect presets to quickly
+          move from natural motion to stylized effects.
+        </p>
+        <p>
+          The system is designed to demonstrate how a modern rendering stack can keep physics
+          and draw operations on the GPU so interaction remains smooth with large particle
+          counts. The on-screen FPS meter and backend indicator help you confirm runtime
+          behavior while changing parameters. When presets are applied, they update force
+          settings and particle behavior profiles without requiring a page reload, and a
+          shuffle control can quickly cycle through visual modes.
+        </p>
+        <p>
+          Controls are available through labeled form fields, and all major UI actions are
+          surfaced as standard buttons and inputs, including pause/resume and trails toggles.
+          Reset returns the demo to a known state so experiments remain repeatable. This page
+          includes links to About, Contact, and
+          Privacy Policy resources so visitors can understand ownership, reporting channels,
+          and data handling expectations around this demo.
+        </p>
+        <p>
+          If your browser does not support the required GPU features, initialization may fail
+          and the app will display a clear error message. In supported environments, the demo
+          should animate continuously while allowing live edits to simulation settings.
+        </p>
+      </section>
+    </main>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

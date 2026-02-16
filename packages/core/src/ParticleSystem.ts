@@ -9,21 +9,30 @@ import {
   uniformArray,
   vec3,
   vec4,
+  vec2,
   float,
-  int,
-  If,
-  Loop,
-  hash,
-  mix,
   sin,
   cos,
-  sqrt,
-  acos,
-  floor,
   PI2,
-  deltaTime,
-  billboarding,
+  sub,
+  normalize,
+  If,
+  fract,
+  mix,
+  int,
+  clamp,
+  length,
+  cross,
+  dot,
+  max,
 } from 'three/tsl';
+
+// Helper for deterministic randomness
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const hash = Fn(([seed]: any[]) => {
+    const s = float(seed);
+    return fract(sin(s.mul(12.9898)).mul(43758.5453));
+});
 import type { ParticleSystemConfig, ValueRange, TrailConfig } from './types.js';
 import { AnimationCurve, ColorGradient } from './curves.js';
 import { CURVE_SAMPLES } from './uniforms.js';
@@ -69,7 +78,6 @@ export class ParticleSystem extends THREE.Object3D {
   private colorStorage: ReturnType<typeof storage> | null = null;
   private lifeStorage: ReturnType<typeof storage> | null = null;
   private sizeStorage: ReturnType<typeof storage> | null = null;
-  private rotationStorage: ReturnType<typeof storage> | null = null;
 
 
   // Trail storage nodes
@@ -89,6 +97,7 @@ export class ParticleSystem extends THREE.Object3D {
   // Uniforms
   private uniforms = {
     time: uniform(0),
+    deltaTime: uniform(0),
     emitterPosition: uniform(new THREE.Vector3()),
     gravity: uniform(new THREE.Vector3(0, -9.8, 0)),
     startSpeed: uniform(new THREE.Vector2(1, 1)), // min, max
@@ -119,15 +128,18 @@ export class ParticleSystem extends THREE.Object3D {
 
   // Curve lookup tables (baked from AnimationCurve/ColorGradient)
   private sizeOverLifetimeSamples: number[] = Array(CURVE_SAMPLES).fill(1);
-  private colorOverLifetimeSamples: number[] = Array(CURVE_SAMPLES * 4).fill(1); // RGBA interleaved
+  private colorOverLifetimeSamples: THREE.Vector4[] = Array.from(
+    { length: CURVE_SAMPLES },
+    () => new THREE.Vector4(1, 1, 1, 1)
+  );
 
   // TSL uniform arrays for curves (initialized in initComputeShaders)
   private sizeOverLifetimeUniform: ReturnType<typeof uniformArray> | null = null;
   private colorOverLifetimeUniform: ReturnType<typeof uniformArray> | null = null;
 
   // Rendering
-  private mesh!: THREE.InstancedMesh;
-  private material!: THREE.SpriteNodeMaterial;
+  private mesh!: THREE.Points;
+  private material!: THREE.PointsNodeMaterial;
 
   // Trail rendering
   private trailMesh: THREE.LineSegments | null = null;
@@ -152,6 +164,7 @@ export class ParticleSystem extends THREE.Object3D {
     this.maxParticles = config.maxParticles;
     this.config = {
       ...config,
+      lifetime: config.lifetime ?? 2.0,
       emissionRate: config.emissionRate ?? 100,
       looping: config.looping ?? true,
       duration: config.duration ?? 0,
@@ -191,6 +204,53 @@ export class ParticleSystem extends THREE.Object3D {
       }
     }
 
+    // Initialize core particle uniforms from config
+    const lifetime = getMinMax(this.config.lifetime);
+    this.uniforms.lifetime.value.set(lifetime.min, lifetime.max);
+
+    const startSpeed = getMinMax(config.startSpeed ?? 1);
+    this.uniforms.startSpeed.value.set(startSpeed.min, startSpeed.max);
+
+    const startSize = getMinMax(config.startSize ?? 0.1);
+    this.uniforms.startSize.value.set(startSize.min, startSize.max);
+
+    if (config.startColor !== undefined) {
+      const startColor = typeof config.startColor === 'number'
+        ? new THREE.Color(config.startColor)
+        : config.startColor;
+      this.uniforms.startColor.value.set(startColor.r, startColor.g, startColor.b, 1);
+    }
+
+    if (config.gravity) {
+      this.uniforms.gravity.value.copy(config.gravity);
+    }
+
+    if (config.drag !== undefined) {
+      this.uniforms.drag.value = Math.max(0, Math.min(1, config.drag));
+    }
+
+    this.uniforms.emissionRate.value = this.config.emissionRate;
+
+    if (config.sizeOverLifetime) {
+      this.setSizeOverLifetime(config.sizeOverLifetime);
+    }
+
+    if (config.colorOverLifetime) {
+      const gradient = new ColorGradient(
+        config.colorOverLifetime.map((stop) => {
+          const color = typeof stop.color === 'number'
+            ? new THREE.Color(stop.color)
+            : stop.color;
+
+          return {
+            time: stop.position,
+            color: { r: color.r, g: color.g, b: color.b },
+          };
+        }),
+      );
+      this.setColorOverLifetime(gradient);
+    }
+
     this.initBuffers();
     this.initMaterial();
     this.initMesh();
@@ -213,7 +273,6 @@ export class ParticleSystem extends THREE.Object3D {
     this.colorStorage = this.particleStorage.color;
     this.lifeStorage = this.particleStorage.life;
     this.sizeStorage = this.particleStorage.size;
-    this.rotationStorage = this.particleStorage.rotation;
 
     // Trail buffers - only allocate when trails are enabled to save GPU memory
     // For 100K particles with 8 trail positions, this saves ~9.6MB of GPU memory
@@ -230,10 +289,10 @@ export class ParticleSystem extends THREE.Object3D {
   }
 
   /**
-   * Initialize particle material with billboarding
+   * Initialize particle material (PointsNodeMaterial)
    */
   private initMaterial(): void {
-    this.material = new THREE.SpriteNodeMaterial({
+    this.material = new THREE.PointsNodeMaterial({
       transparent: true,
       depthWrite: false,
       blending: this.config.blendMode === 'additive'
@@ -244,36 +303,39 @@ export class ParticleSystem extends THREE.Object3D {
     // Set texture if provided
     if (this.config.texture) {
       this.material.map = this.config.texture;
+      this.material.alphaTest = 0.01; // Discard transparent pixels
     }
 
     // Color from storage buffer
     const colorStorage = this.colorStorage!;
-    this.material.colorNode = colorStorage.element(instanceIndex);
+    this.material.colorNode = colorStorage.element(vertexIndex);
+    
+    // Note: PointsNodeMaterial uses a global point size via material.size property
+    // Individual particle sizes are controlled through the position node scaling
   }
 
   /**
-   * Initialize instanced mesh for rendering
+   * Initialize mesh (THREE.Points)
    */
   private initMesh(): void {
-    // Simple quad geometry for sprites
-    const geometry = new THREE.PlaneGeometry(1, 1);
+    // Create geometry with count vertices
+    const geometry = new THREE.BufferGeometry();
+    const count = this.maxParticles;
+    
+    // We need a position attribute to define the number of vertices, 
+    // even though we overwrite positions in the shader.
+    // Use a simple buffer of zeros.
+    const positions = new Float32Array(count * 3);
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-    this.mesh = new THREE.InstancedMesh(geometry, this.material, this.maxParticles);
-    this.mesh.count = 0; // Start with no visible particles
+    this.mesh = new THREE.Points(geometry, this.material);
     this.mesh.frustumCulled = false;
 
     // Bind position from storage buffer
     const positionStorage = this.positionStorage!;
-    const sizeStorage = this.sizeStorage!;
 
-    // Custom vertex shader for positioning and billboarding
-    this.material.positionNode = Fn(() => {
-      const particlePos = positionStorage.element(instanceIndex);
-      const particleSize = sizeStorage.element(instanceIndex);
-
-      // Apply billboarding and scale
-      return billboarding().mul(particleSize).add(particlePos);
-    })();
+    // Position node for Points
+    this.material.positionNode = positionStorage.element(vertexIndex);
 
     this.add(this.mesh);
 
@@ -317,7 +379,7 @@ export class ParticleSystem extends THREE.Object3D {
 
     // Read position from GPU storage buffer using vertexIndex
     // This is similar to how particle positions work with instanceIndex
-    this.trailMaterial.positionNode = trailVertexStorage.element(vertexIndex);
+    this.trailMaterial.positionNode = trailVertexStorage.element(vertexIndex).xyz;
 
     // Set color and opacity from the RGBA storage buffer using vertexIndex
     const colorData = trailColorStorage.element(vertexIndex);
@@ -337,7 +399,6 @@ export class ParticleSystem extends THREE.Object3D {
    */
   private initComputeShaders(): void {
     const count = this.maxParticles;
-    const trailLength = this.trailConfig.length;
     const trailsEnabled = this.trailConfig.enabled;
 
     const positionStorage = this.positionStorage!;
@@ -345,382 +406,194 @@ export class ParticleSystem extends THREE.Object3D {
     const colorStorage = this.colorStorage!;
     const lifeStorage = this.lifeStorage!;
     const sizeStorage = this.sizeStorage!;
-    const rotationStorage = this.rotationStorage!;
-    // Trail storage is only available when trails are enabled
-    const trailStorage = trailsEnabled ? this.trailStorage! : null;
-    const trailIndexStorage = trailsEnabled ? this.trailIndexStorage! : null;
-    const trailLengthConst = int(trailLength);
+    
     const uniforms = this.uniforms;
+    this.sizeOverLifetimeUniform = uniformArray(this.sizeOverLifetimeSamples, 'float');
+    this.colorOverLifetimeUniform = uniformArray(this.colorOverLifetimeSamples, 'vec4');
 
-    // Initialize curve uniform arrays
-    this.sizeOverLifetimeUniform = uniformArray(this.sizeOverLifetimeSamples);
-    this.colorOverLifetimeUniform = uniformArray(this.colorOverLifetimeSamples);
-    const sizeOverLifetimeArr = this.sizeOverLifetimeUniform;
-    const colorOverLifetimeArr = this.colorOverLifetimeUniform;
+    // Use a simpler hash function for randomness
+    const rand = (seed: any) => hash(seed);
 
     // Initialize compute - sets up initial particle state
     // @ts-expect-error - TSL compute shaders don't return values, but types require Node
     this.initCompute = (Fn(() => {
       const i = instanceIndex;
-
-      // Use particle index as seed for deterministic randomness
-      const seed = hash(i);
-      const seed2 = hash(i.add(1000));
-      const seed3 = hash(i.add(2000));
-
-      // Random position based on emitter type
-      const emitterType = uniforms.emitterType;
-      const radius = uniforms.emitterRadius;
-
-      // Spherical coordinates for random direction
-      const theta = seed.mul(PI2);
-      const phi = acos(seed2.mul(2).sub(1));
-
-      // Type 0: Point emitter - all at origin
-      const pointPos = vec3(0, 0, 0);
-
-      // Type 1: Sphere emitter - random point in sphere
-      const r = sqrt(seed3).mul(radius);
-      const spherePos = vec3(
-        sin(phi).mul(cos(theta)).mul(r),
-        sin(phi).mul(sin(theta)).mul(r),
-        cos(phi).mul(r)
-      );
-
-      // Type 2: Box emitter - random point in box
-      const boxSize = uniforms.emitterBoxSize;
-      const boxPos = vec3(
-        seed.sub(0.5).mul(boxSize.x),
-        seed2.sub(0.5).mul(boxSize.y),
-        seed3.sub(0.5).mul(boxSize.z)
-      );
-
-      // Type 3: Cone emitter - random point on base circle
-      const coneRadius = uniforms.emitterConeRadius;
-      const coneR = sqrt(seed2).mul(coneRadius);
-      const conePos = vec3(
-        coneR.mul(cos(theta)),
-        float(0),
-        coneR.mul(sin(theta))
-      );
-
-      // Type 4: Circle emitter - random point on circle
-      const circleArc = uniforms.emitterCircleArc;
-      const circleTheta = seed.mul(circleArc);
-      const circleR = sqrt(seed2).mul(radius);
-      const circlePos = vec3(
-        circleR.mul(cos(circleTheta)),
-        float(0),
-        circleR.mul(sin(circleTheta))
-      );
-
-      // Select position based on emitter type using cascading mix
-      // 0=point, 1=sphere, 2=box, 3=cone, 4=circle
-      const isSphere = emitterType.equal(1).toFloat();
-      const isBox = emitterType.equal(2).toFloat();
-      const isCone = emitterType.equal(3).toFloat();
-      const isCircle = emitterType.equal(4).toFloat();
-
-      const pos = vec3(0, 0, 0);
-      pos.addAssign(pointPos.mul(float(1).sub(isSphere).sub(isBox).sub(isCone).sub(isCircle)));
-      pos.addAssign(spherePos.mul(isSphere));
-      pos.addAssign(boxPos.mul(isBox));
-      pos.addAssign(conePos.mul(isCone));
-      pos.addAssign(circlePos.mul(isCircle));
-      pos.addAssign(uniforms.emitterPosition);
-
-      positionStorage.element(i).assign(pos);
-
-      // Random velocity direction
-      const speed = mix(
-        uniforms.startSpeed.x,
-        uniforms.startSpeed.y,
-        seed
-      );
-
-      // Random spherical direction (for point/sphere emitters)
-      const randomDir = vec3(
-        sin(phi).mul(cos(theta)),
-        sin(phi).mul(sin(theta)),
-        cos(phi)
-      );
-
-      // Upward direction (for box/circle emitters)
-      const upDir = vec3(0, 1, 0);
-
-      // Cone direction - within cone angle
-      const coneAngle = uniforms.emitterConeAngle;
-      const coneTiltAngle = seed3.mul(coneAngle);
-      const coneBaseAngle = theta; // Use same theta for consistency
-      const coneDir = vec3(
-        sin(coneTiltAngle).mul(cos(coneBaseAngle)),
-        cos(coneTiltAngle),
-        sin(coneTiltAngle).mul(sin(coneBaseAngle))
-      );
-
-      // Select velocity direction based on emitter type
-      const velDir = vec3(0, 0, 0);
-      velDir.addAssign(randomDir.mul(isSphere.add(float(1).sub(isSphere).sub(isBox).sub(isCone).sub(isCircle))));
-      velDir.addAssign(upDir.mul(isBox));
-      velDir.addAssign(coneDir.mul(isCone));
-      velDir.addAssign(upDir.mul(isCircle));
-
-      velocityStorage.element(i).assign(velDir.mul(speed));
-
+      const seed = float(i).add(uniforms.time);
+      
+      // Random position in sphere (simplified)
+      const r = rand(seed).pow(1.0/3.0).mul(uniforms.emitterRadius);
+      const theta = rand(seed.add(1.0)).mul(PI2);
+      const phi = rand(seed.add(2.0)).mul(Math.PI).sub(Math.PI/2);
+      
+      const x = r.mul(cos(phi)).mul(cos(theta));
+      const y = r.mul(sin(phi));
+      const z = r.mul(cos(phi)).mul(sin(theta));
+      
+      const pos = vec3(x, y, z).add(uniforms.emitterPosition);
+      positionStorage.element(i).assign(vec4(pos, 1.0));
+      
+      // Random velocity
+      const speed = mix(uniforms.startSpeed.x, uniforms.startSpeed.y, rand(seed.add(3.0)));
+      // Random direction
+      const vx = rand(seed.add(4.0)).sub(0.5).mul(2.0);
+      const vy = rand(seed.add(5.0)).sub(0.5).mul(2.0);
+      const vz = rand(seed.add(6.0)).sub(0.5).mul(2.0);
+      const vel = normalize(vec3(vx, vy, vz)).mul(speed);
+      velocityStorage.element(i).assign(vec4(vel, 0.0));
+      
+      // Life
+      const life = mix(uniforms.lifetime.x, uniforms.lifetime.y, rand(seed.add(7.0)));
+      lifeStorage.element(i).assign(vec2(life, life)); // current, max
+      
       // Color
       colorStorage.element(i).assign(uniforms.startColor);
-
-      // Life: x = current (starts at max), y = max
-      const maxLife = mix(uniforms.lifetime.x, uniforms.lifetime.y, seed);
-      lifeStorage.element(i).assign(vec3(maxLife, maxLife, 0).xy);
-
+      
       // Size
-      const size = mix(uniforms.startSize.x, uniforms.startSize.y, seed2);
+      const size = mix(uniforms.startSize.x, uniforms.startSize.y, rand(seed.add(8.0)));
       sizeStorage.element(i).assign(size);
-
-      // Rotation
-      rotationStorage.element(i).assign(seed3.mul(PI2));
-
-      // Initialize trail: set all trail positions to the initial particle position
-      // This prevents trails from having (0,0,0) segments initially
-      // Only include trail code when trails are enabled (JavaScript conditional)
-      if (trailStorage && trailIndexStorage) {
-        const particleTrailBase = i.mul(trailLengthConst);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        Loop({ start: int(0), end: trailLengthConst, type: 'int', condition: '<' }, ({ i: j }: { i: any }) => {
-          trailStorage.element(particleTrailBase.add(j)).assign(pos);
-        });
-        // Start trail index at 0
-        trailIndexStorage.element(i).assign(int(0));
-      }
+      
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    })() as any).compute(count, [64]);
+    })() as any).compute(count);
 
     // Update compute - runs every frame to simulate particles
     // @ts-expect-error - TSL compute shaders don't return values, but types require Node
     this.updateCompute = (Fn(() => {
-      const i = instanceIndex;
+        const i = instanceIndex;
+        
+        // Read current state
+        const pos = positionStorage.element(i);
+        const vel = velocityStorage.element(i);
+        const life = lifeStorage.element(i);
+        const dt = uniforms.deltaTime;
+        
+        // Decrease life
+        life.x.subAssign(dt);
+        
+        // Check if dead
+        If(life.x.lessThan(0.0), () => {
+            // Respawn
+            const seed = float(i).add(uniforms.time).add(100.0);
+            
+            // Reset life
+            const newLife = mix(uniforms.lifetime.x, uniforms.lifetime.y, rand(seed));
+            life.assign(vec2(newLife, newLife));
+            
+            // Reset position (emitter)
+            const r = rand(seed.add(1.0)).pow(1.0/3.0).mul(uniforms.emitterRadius);
+            const theta = rand(seed.add(2.0)).mul(PI2);
+            const phi = rand(seed.add(3.0)).mul(Math.PI).sub(Math.PI/2);
+            
+            const x = r.mul(cos(phi)).mul(cos(theta));
+            const y = r.mul(sin(phi));
+            const z = r.mul(cos(phi)).mul(sin(theta));
+            
+            pos.xyz.assign(vec3(x, y, z).add(uniforms.emitterPosition));
+            
+            // Reset velocity
+            const speed = mix(uniforms.startSpeed.x, uniforms.startSpeed.y, rand(seed.add(4.0)));
+            const vx = rand(seed.add(5.0)).sub(0.5).mul(2.0);
+            const vy = rand(seed.add(6.0)).sub(0.5).mul(2.0);
+            const vz = rand(seed.add(7.0)).sub(0.5).mul(2.0);
+            vel.xyz.assign(normalize(vec3(vx, vy, vz)).mul(speed));
+            
+            // Reset Color and Size
+            If(uniforms.useColorOverLifetime.greaterThan(0), () => {
+              colorStorage.element(i).assign(this.colorOverLifetimeUniform!.element(int(0)));
+            }).Else(() => {
+              colorStorage.element(i).assign(uniforms.startColor);
+            });
+            const size = mix(uniforms.startSize.x, uniforms.startSize.y, rand(seed.add(8.0)));
+            sizeStorage.element(i).assign(size);
+            
+        }).Else(() => {
+            // Apply Physics
+            
+            // Gravity
+            vel.xyz.addAssign(uniforms.gravity.mul(dt));
+            
+            // Drag
+            vel.xyz.mulAssign(sub(1.0, uniforms.drag.mul(dt)));
+            
+            // Wind
+            vel.xyz.addAssign(uniforms.windDirection.mul(dt));
 
-      // Read current state
-      const pos = positionStorage.element(i);
-      const vel = velocityStorage.element(i);
-      const life = lifeStorage.element(i);
+            // Point attractor
+            const toAttractor = uniforms.attractorPosition.sub(pos.xyz);
+            const attractorDistance = length(toAttractor);
+            If(
+              uniforms.attractorStrength.greaterThan(0.0)
+                .or(uniforms.attractorStrength.lessThan(0.0))
+                .and(attractorDistance.lessThan(uniforms.attractorRadius)),
+              () => {
+                const distanceFactor = float(1.0).sub(
+                  attractorDistance.div(max(uniforms.attractorRadius, float(0.0001)))
+                );
+                const attractorForce = normalize(toAttractor)
+                  .mul(uniforms.attractorStrength)
+                  .mul(distanceFactor);
+                vel.xyz.addAssign(attractorForce.mul(dt));
+              },
+            );
 
-      // Get current and max life
-      const currentLife = life.x;
-      const maxLife = life.y;
+            // Vortex force around axis
+            const toVortex = pos.xyz.sub(uniforms.vortexPosition);
+            const axialDistance = dot(toVortex, uniforms.vortexAxis);
+            const radialVector = toVortex.sub(uniforms.vortexAxis.mul(axialDistance));
+            const radialLength = length(radialVector);
+            If(
+              uniforms.vortexStrength.greaterThan(0.0)
+                .or(uniforms.vortexStrength.lessThan(0.0))
+                .and(radialLength.greaterThan(0.0001)),
+              () => {
+                const tangent = normalize(cross(uniforms.vortexAxis, radialVector));
+                vel.xyz.addAssign(tangent.mul(uniforms.vortexStrength).mul(dt));
+              },
+            );
+            
+            // Move
+            pos.xyz.addAssign(vel.xyz.mul(dt));
 
-      // Only update if particle is alive
-      If(currentLife.greaterThan(0), () => {
-        // Calculate all forces and accumulate into velocity
-        // Gravity
-        const gravityForce = uniforms.gravity.mul(deltaTime);
+            // Apply color and visual intensity over lifetime
+            const normalizedAge = clamp(
+              float(1.0).sub(life.x.div(max(life.y, float(0.0001)))),
+              float(0.0),
+              float(0.9999),
+            );
+            const sampleIndex = int(normalizedAge.mul(float(CURVE_SAMPLES)));
 
-        // Drag (velocity damping) - apply as multiplier
-        const dragFactor = float(1).sub(uniforms.drag.mul(deltaTime));
+            If(uniforms.useColorOverLifetime.greaterThan(0), () => {
+              const sampleColor = this.colorOverLifetimeUniform!.element(sampleIndex);
+              If(uniforms.useSizeOverLifetime.greaterThan(0), () => {
+                const intensity = this.sizeOverLifetimeUniform!.element(sampleIndex).x;
+                colorStorage.element(i).assign(
+                  vec4(
+                    sampleColor.xyz.mul(intensity),
+                    clamp(sampleColor.w.mul(intensity), float(0.0), float(1.0))
+                  )
+                );
+              }).Else(() => {
+                colorStorage.element(i).assign(sampleColor);
+              });
+            }).Else(() => {
+              If(uniforms.useSizeOverLifetime.greaterThan(0), () => {
+                const intensity = this.sizeOverLifetimeUniform!.element(sampleIndex).x;
+                colorStorage.element(i).assign(
+                  vec4(
+                    uniforms.startColor.xyz.mul(intensity),
+                    clamp(uniforms.startColor.w.mul(intensity), float(0.0), float(1.0))
+                  )
+                );
+              }).Else(() => {
+                colorStorage.element(i).assign(uniforms.startColor);
+              });
+            });
+            
+            // Validating w component for alignment, though for pos it's 1.0
+            pos.w.assign(1.0);
+        });
 
-        // Wind force
-        const windForce = uniforms.windDirection.mul(deltaTime);
-
-        // Point attractor
-        const toAttractor = uniforms.attractorPosition.sub(pos);
-        const distToAttractor = toAttractor.length().max(0.001); // Avoid division by zero
-        const attractorInfluence = float(1).sub(
-          distToAttractor.div(uniforms.attractorRadius).clamp(0, 1)
-        );
-        const attractorForce = toAttractor
-          .div(distToAttractor) // normalize
-          .mul(uniforms.attractorStrength)
-          .mul(attractorInfluence)
-          .mul(deltaTime);
-
-        // Vortex force (rotation around axis)
-        const toVortexCenter = pos.sub(uniforms.vortexPosition);
-        // Cross product with axis gives tangent direction
-        const tangent = uniforms.vortexAxis.cross(toVortexCenter);
-        const tangentLen = tangent.length().max(0.001);
-        const vortexForce = tangent
-          .div(tangentLen) // normalize
-          .mul(uniforms.vortexStrength)
-          .mul(deltaTime);
-
-        // Combine all forces: first apply drag to existing velocity, then add forces
-        const newVel = vel
-          .mul(dragFactor)
-          .add(gravityForce)
-          .add(windForce)
-          .add(attractorForce)
-          .add(vortexForce);
-
-        // Store updated velocity
-        velocityStorage.element(i).assign(newVel);
-
-        // Update position
-        const newPos = pos.add(newVel.mul(deltaTime));
-        positionStorage.element(i).assign(newPos);
-
-        // Update life
-        const newLife = currentLife.sub(deltaTime);
-        lifeStorage.element(i).x.assign(newLife);
-
-        // Calculate normalized age (0 = born, 1 = dead)
-        const normalizedAge = float(1).sub(newLife.div(maxLife));
-
-        // Sample size curve if enabled
-        // Map age to array index (0-15)
-        const curveIndex = floor(normalizedAge.mul(float(CURVE_SAMPLES - 1))).toInt();
-        const sizeMultiplier = mix(
-          float(1),
-          sizeOverLifetimeArr.element(curveIndex),
-          uniforms.useSizeOverLifetime
-        );
-        // Update size in storage (base size * curve multiplier)
-        const baseSize = mix(uniforms.startSize.x, uniforms.startSize.y, hash(i.add(1000)));
-        sizeStorage.element(i).assign(baseSize.mul(sizeMultiplier));
-
-        // Sample color curve if enabled
-        const colorIdx = curveIndex.mul(int(4)); // 4 values per color (RGBA)
-        const curveR = colorOverLifetimeArr.element(colorIdx);
-        const curveG = colorOverLifetimeArr.element(colorIdx.add(int(1)));
-        const curveB = colorOverLifetimeArr.element(colorIdx.add(int(2)));
-        const curveA = colorOverLifetimeArr.element(colorIdx.add(int(3)));
-
-        // Default alpha: quadratic fadeout
-        const defaultAlpha = float(1).sub(normalizedAge.mul(normalizedAge));
-
-        // Mix between default behavior and curve
-        const finalR = mix(uniforms.startColor.x, curveR, uniforms.useColorOverLifetime);
-        const finalG = mix(uniforms.startColor.y, curveG, uniforms.useColorOverLifetime);
-        const finalB = mix(uniforms.startColor.z, curveB, uniforms.useColorOverLifetime);
-        const finalA = mix(defaultAlpha, curveA, uniforms.useColorOverLifetime);
-
-        colorStorage.element(i).assign(vec4(finalR, finalG, finalB, finalA));
-      });
-
-      // Respawn dead particles
-      If(currentLife.lessThanEqual(0), () => {
-        // Generate new random seeds using particle index + time uniform
-        const respawnSeed = hash(i.add(uniforms.time.mul(1000).toInt()));
-        const respawnSeed2 = hash(i.add(uniforms.time.mul(1000).toInt()).add(1000));
-        const respawnSeed3 = hash(i.add(uniforms.time.mul(1000).toInt()).add(2000));
-
-        // Spherical coordinates for random direction
-        const theta = respawnSeed.mul(PI2);
-        const phi = acos(respawnSeed2.mul(2).sub(1));
-
-        // Reset position at emitter
-        const radius = uniforms.emitterRadius;
-        const r = sqrt(respawnSeed3).mul(radius);
-        const emitterType = uniforms.emitterType;
-
-        // Type 0: Point emitter
-        const pointPos = vec3(0, 0, 0);
-
-        // Type 1: Sphere emitter
-        const spherePos = vec3(
-          sin(phi).mul(cos(theta)).mul(r),
-          sin(phi).mul(sin(theta)).mul(r),
-          cos(phi).mul(r)
-        );
-
-        // Type 2: Box emitter
-        const boxSize = uniforms.emitterBoxSize;
-        const boxPos = vec3(
-          respawnSeed.sub(0.5).mul(boxSize.x),
-          respawnSeed2.sub(0.5).mul(boxSize.y),
-          respawnSeed3.sub(0.5).mul(boxSize.z)
-        );
-
-        // Type 3: Cone emitter
-        const coneRadius = uniforms.emitterConeRadius;
-        const coneR = sqrt(respawnSeed2).mul(coneRadius);
-        const conePos = vec3(
-          coneR.mul(cos(theta)),
-          float(0),
-          coneR.mul(sin(theta))
-        );
-
-        // Type 4: Circle emitter
-        const circleArc = uniforms.emitterCircleArc;
-        const circleTheta = respawnSeed.mul(circleArc);
-        const circleR = sqrt(respawnSeed2).mul(radius);
-        const circlePos = vec3(
-          circleR.mul(cos(circleTheta)),
-          float(0),
-          circleR.mul(sin(circleTheta))
-        );
-
-        // Select position based on emitter type
-        const isSphere = emitterType.equal(1).toFloat();
-        const isBox = emitterType.equal(2).toFloat();
-        const isCone = emitterType.equal(3).toFloat();
-        const isCircle = emitterType.equal(4).toFloat();
-
-        const newPos = vec3(0, 0, 0);
-        newPos.addAssign(pointPos.mul(float(1).sub(isSphere).sub(isBox).sub(isCone).sub(isCircle)));
-        newPos.addAssign(spherePos.mul(isSphere));
-        newPos.addAssign(boxPos.mul(isBox));
-        newPos.addAssign(conePos.mul(isCone));
-        newPos.addAssign(circlePos.mul(isCircle));
-        newPos.addAssign(uniforms.emitterPosition);
-        positionStorage.element(i).assign(newPos);
-
-        // Reset velocity with appropriate direction for emitter type
-        const speed = mix(uniforms.startSpeed.x, uniforms.startSpeed.y, respawnSeed);
-
-        // Random spherical direction
-        const randomDir = vec3(
-          sin(phi).mul(cos(theta)),
-          sin(phi).mul(sin(theta)),
-          cos(phi)
-        );
-
-        // Upward direction
-        const upDir = vec3(0, 1, 0);
-
-        // Cone direction
-        const coneAngle = uniforms.emitterConeAngle;
-        const coneTiltAngle = respawnSeed3.mul(coneAngle);
-        const coneDir = vec3(
-          sin(coneTiltAngle).mul(cos(theta)),
-          cos(coneTiltAngle),
-          sin(coneTiltAngle).mul(sin(theta))
-        );
-
-        // Select velocity direction
-        const velDir = vec3(0, 0, 0);
-        velDir.addAssign(randomDir.mul(isSphere.add(float(1).sub(isSphere).sub(isBox).sub(isCone).sub(isCircle))));
-        velDir.addAssign(upDir.mul(isBox));
-        velDir.addAssign(coneDir.mul(isCone));
-        velDir.addAssign(upDir.mul(isCircle));
-
-        velocityStorage.element(i).assign(velDir.mul(speed));
-
-        // Reset life
-        const newMaxLife = mix(uniforms.lifetime.x, uniforms.lifetime.y, respawnSeed);
-        lifeStorage.element(i).assign(vec3(newMaxLife, newMaxLife, 0).xy);
-
-        // Reset size
-        const newSize = mix(uniforms.startSize.x, uniforms.startSize.y, respawnSeed2);
-        sizeStorage.element(i).assign(newSize);
-
-        // Reset color
-        colorStorage.element(i).assign(uniforms.startColor);
-
-        // Reset trail: set all trail positions to new spawn position
-        // Only include trail code when trails are enabled (JavaScript conditional)
-        if (trailStorage && trailIndexStorage) {
-          const particleTrailBase = i.mul(trailLengthConst);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          Loop({ start: int(0), end: trailLengthConst, type: 'int', condition: '<' }, ({ i: j }: { i: any }) => {
-            trailStorage.element(particleTrailBase.add(j)).assign(newPos);
-          });
-          // Reset trail index
-          trailIndexStorage.element(i).assign(int(0));
-        }
-      });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    })() as any).compute(count, [64]);
+    })() as any).compute(count);
 
     // Trail compute - updates trail ring buffer and flattens to line segments
     // Only initialize when trails are enabled
@@ -755,10 +628,28 @@ export class ParticleSystem extends THREE.Object3D {
    * Initialize the particle system (must be called with renderer)
    */
   async init(renderer: THREE.WebGPURenderer): Promise<void> {
+    console.log("ParticleSystem INIT called");
     if (this.isInitialized) return;
 
     this.renderer = renderer;
     this.initComputeShaders();
+
+    // LOCAL TEST IN INIT
+    const testCount = 100;
+    const testBuffer = new THREE.StorageBufferAttribute(new Float32Array(testCount), 1);
+    const testStorage = storage(testBuffer, 'float', testCount);
+    // @ts-expect-error - TSL compute shaders don't return values, but types require Node
+    const testNode = (Fn(() => {
+        const i = instanceIndex;
+        testStorage.element(i).assign(float(1.0));
+    })() as any).compute(testCount);
+    
+    try {
+        await renderer.computeAsync(testNode);
+        console.log("Local init test SUCCESS");
+    } catch (e) {
+        console.error("Local init test FAILED", e);
+    }
 
     // Run init compute to set up particles
     if (this.initCompute) {
@@ -801,6 +692,7 @@ export class ParticleSystem extends THREE.Object3D {
 
     this.elapsedTime += dt;
     this.uniforms.time.value = this.elapsedTime;
+    this.uniforms.deltaTime.value = dt;
 
     // Update emitter position from world matrix
     this.getWorldPosition(this.uniforms.emitterPosition.value);
@@ -816,9 +708,6 @@ export class ParticleSystem extends THREE.Object3D {
     if (this.trailConfig.enabled && this.trailCompute) {
       await this.renderer.computeAsync(this.trailCompute);
     }
-
-    // Update visible particle count (simplified - show all for now)
-    this.mesh.count = this.maxParticles;
   }
 
   /**
@@ -931,15 +820,11 @@ export class ParticleSystem extends THREE.Object3D {
       return;
     }
 
-    // Bake gradient to samples (RGBA interleaved)
+    // Bake gradient to vec4 samples
     for (let i = 0; i < CURVE_SAMPLES; i++) {
       const t = i / (CURVE_SAMPLES - 1);
       const color = gradient.evaluate(t);
-      const baseIdx = i * 4;
-      this.colorOverLifetimeSamples[baseIdx] = color.r;
-      this.colorOverLifetimeSamples[baseIdx + 1] = color.g;
-      this.colorOverLifetimeSamples[baseIdx + 2] = color.b;
-      this.colorOverLifetimeSamples[baseIdx + 3] = color.a;
+      this.colorOverLifetimeSamples[i].set(color.r, color.g, color.b, color.a);
     }
 
     // Update uniform array
@@ -1016,7 +901,6 @@ export class ParticleSystem extends THREE.Object3D {
     this.colorStorage = null;
     this.lifeStorage = null;
     this.sizeStorage = null;
-    this.rotationStorage = null;
     this.trailStorage = null;
     this.trailIndexStorage = null;
     this.trailVertexStorage = null;

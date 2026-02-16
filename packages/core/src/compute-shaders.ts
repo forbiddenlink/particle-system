@@ -78,7 +78,7 @@ export function createTrailCompute(
       // Calculate base index in trail buffer for this particle
       const particleTrailBase = i.mul(trailLengthUniform);
 
-      // Write current position to ring buffer at current index
+      // Write current position to ring buffer at current index (pos is already vec4 from positionStorage)
       const writeIdx = particleTrailBase.add(trailIdx);
       trailStorage.element(writeIdx).assign(pos);
 

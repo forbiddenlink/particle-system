@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About Nova Particles</title>
+    <meta
+      name="description"
+      content="Learn how Nova Particles runs high-density particle simulations in the browser with WebGPU and GPU compute workflows."
+    />
+    <meta name="author" content="Nova Particles Team" />
+    <link rel="canonical" href="http://localhost:3000/about/index.html" />
+    <meta property="article:published_time" content="2026-02-16" />
+    <link rel="stylesheet" href="/site-pages.css" />
+  </head>
+  <body>
+    <main>
+      <article class="panel">
+        <h1>About Nova Particles</h1>
+        <p>
+          Nova Particles is an interactive demonstration of browser-native GPU simulation. The
+          goal is simple: show that modern web graphics can render large, expressive particle
+          effects without relying on native desktop engines. Instead of pushing particle math
+          through the CPU, the engine stores simulation state in GPU buffers and updates that
+          state with compute-style workflows.
+        </p>
+        <p>
+          This approach keeps frame pacing steadier as particle counts increase and enables
+          richer behavior controls. Users can tune gravity, drag, wind, and vortex forces in
+          real time, then combine those forces with predefined visual presets. Trails are
+          available for motion persistence and shape readability. The demo is intentionally
+          hands-on so developers and technical artists can evaluate tradeoffs quickly.
+        </p>
+        <p>
+          Under the hood, the project uses TypeScript, Three.js WebGPU APIs, and a structure
+          of arrays layout for particle data. That layout helps memory access patterns stay
+          predictable when updating position, velocity, color, and life values. By keeping
+          simulation and rendering close together on the GPU, the app avoids repeated
+          CPU-to-GPU transfer overhead that can bottleneck high-count effects.
+        </p>
+        <p>
+          This page exists to provide context, ownership, and operating intent. If you need
+          support or want to report issues, use the contact page. If you want details about
+          policy and data handling, use the privacy policy page linked below.
+        </p>
+        <span class="byline">By Nova Particles Team</span>
+        <time datetime="2026-02-16">Published February 16, 2026</time>
+
+        <nav aria-label="Secondary pages">
+          <a href="/contact/index.html">Contact</a>
+          <a href="/privacy-policy/index.html">Privacy Policy</a>
+        </nav>
+        <a class="home-link" href="/">Back to Demo</a>
+      </article>
+    </main>
+  </body>
+</html>

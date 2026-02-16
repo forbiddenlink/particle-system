@@ -42,3 +42,5 @@ export type {
   ParticleSystemState,
   TrailConfig,
 } from './types.js';
+
+export { ParticleTextureGenerator, ParticleTextureAtlas, type ParticleTextureType } from './textures/index.js';

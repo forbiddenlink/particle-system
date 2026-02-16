@@ -26,11 +26,19 @@ vi.mock('three/webgpu', () => ({
   Vector2: class Vector2 {
     x = 0; y = 0;
     constructor(x = 0, y = 0) { this.x = x; this.y = y; }
+    set(x: number, y: number) {
+      this.x = x; this.y = y;
+      return this;
+    }
   },
   Vector4: class Vector4 {
     x = 0; y = 0; z = 0; w = 0;
     constructor(x = 0, y = 0, z = 0, w = 0) {
       this.x = x; this.y = y; this.z = z; this.w = w;
+    }
+    set(x: number, y: number, z: number, w: number) {
+      this.x = x; this.y = y; this.z = z; this.w = w;
+      return this;
     }
   },
   Color: class Color {
@@ -71,6 +79,21 @@ vi.mock('three/webgpu', () => ({
     frustumCulled = true;
     visible = true;
   },
+  Points: class Points {
+    frustumCulled = true;
+    geometry = { dispose: () => {} };
+    constructor(_geo: any, _mat: any) {}
+  },
+  PointsNodeMaterial: class PointsNodeMaterial {
+    transparent = false;
+    depthWrite = false;
+    blending = 0;
+    map: any = null;
+    alphaTest = 0;
+    colorNode: any = null;
+    positionNode: any = null;
+    dispose() {}
+  },
   SpriteNodeMaterial: class SpriteNodeMaterial {
     transparent = false;
     depthWrite = false;
@@ -100,7 +123,7 @@ vi.mock('three/tsl', () => ({
   instanceIndex: {},
   vertexIndex: {},
   uniform: (val: any) => ({ value: val }),
-  uniformArray: (arr: number[]) => ({ array: arr }),
+  uniformArray: (arr: any[]) => ({ array: arr }),
   vec3: () => ({ addAssign: () => {}, mul: () => ({}), add: () => ({}), sub: () => ({}), div: () => ({}), cross: () => ({}) }),
   vec4: () => ({}),
   float: () => ({ sub: () => ({}), mul: () => ({}), div: () => ({}), add: () => ({}) }),
@@ -213,6 +236,35 @@ describe('ParticleSystem', () => {
         maxParticles: 50000,
       });
       expect(system.config.maxParticles).toBe(50000);
+    });
+
+    it('maps initial config values to uniforms', () => {
+      const system = new ParticleSystem({
+        maxParticles: 1000,
+        lifetime: { min: 3, max: 6 },
+        startSpeed: { min: 2, max: 8 },
+        startSize: { min: 0.2, max: 0.6 },
+        startColor: 0xff44aa,
+        gravity: { x: 1, y: -2, z: 3 } as any,
+        drag: 0.4,
+        emissionRate: 250,
+      });
+
+      const uniforms = (system as any).uniforms;
+      expect(uniforms.lifetime.value.x).toBe(3);
+      expect(uniforms.lifetime.value.y).toBe(6);
+      expect(uniforms.startSpeed.value.x).toBe(2);
+      expect(uniforms.startSpeed.value.y).toBe(8);
+      expect(uniforms.startSize.value.x).toBe(0.2);
+      expect(uniforms.startSize.value.y).toBe(0.6);
+      expect(uniforms.gravity.value.x).toBe(1);
+      expect(uniforms.gravity.value.y).toBe(-2);
+      expect(uniforms.gravity.value.z).toBe(3);
+      expect(uniforms.drag.value).toBe(0.4);
+      expect(uniforms.emissionRate.value).toBe(250);
+      expect(uniforms.startColor.value.x).toBeGreaterThan(0.9);
+      expect(uniforms.startColor.value.y).toBeGreaterThan(0.2);
+      expect(uniforms.startColor.value.z).toBeGreaterThan(0.6);
     });
   });
 

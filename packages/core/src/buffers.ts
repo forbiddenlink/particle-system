@@ -51,15 +51,15 @@ export interface TrailStorageNodes {
  */
 export function createParticleBuffers(maxParticles: number): ParticleBuffers {
   return {
-    // Position: vec3 per particle
+    // Position: vec4 per particle (xyz, padding)
     position: new THREE.StorageBufferAttribute(
-      new Float32Array(maxParticles * 3),
-      3
+      new Float32Array(maxParticles * 4),
+      4
     ),
-    // Velocity: vec3 per particle
+    // Velocity: vec4 per particle (xyz, padding)
     velocity: new THREE.StorageBufferAttribute(
-      new Float32Array(maxParticles * 3),
-      3
+      new Float32Array(maxParticles * 4),
+      4
     ),
     // Color: vec4 per particle (RGBA)
     color: new THREE.StorageBufferAttribute(
@@ -92,8 +92,8 @@ export function createParticleStorageNodes(
   maxParticles: number
 ): ParticleStorageNodes {
   return {
-    position: storage(buffers.position, 'vec3', maxParticles),
-    velocity: storage(buffers.velocity, 'vec3', maxParticles),
+    position: storage(buffers.position, 'vec4', maxParticles),
+    velocity: storage(buffers.velocity, 'vec4', maxParticles),
     color: storage(buffers.color, 'vec4', maxParticles),
     life: storage(buffers.life, 'vec2', maxParticles),
     size: storage(buffers.size, 'float', maxParticles),
@@ -109,10 +109,10 @@ export function createTrailBuffers(
   maxParticles: number,
   trailLength: number
 ): TrailBuffers {
-  // Trail positions: trailLength vec3s per particle
+  // Trail positions: trailLength vec4s per particle
   const trail = new THREE.StorageBufferAttribute(
-    new Float32Array(maxParticles * trailLength * 3),
-    3
+    new Float32Array(maxParticles * trailLength * 4),
+    4
   );
 
   // Trail index: current write position in ring buffer per particle
@@ -125,8 +125,8 @@ export function createTrailBuffers(
   // Each particle has (trailLength - 1) line segments = 2 * (trailLength - 1) vertices
   const trailVertexCount = maxParticles * (trailLength - 1) * 2;
   const trailVertex = new THREE.StorageBufferAttribute(
-    new Float32Array(trailVertexCount * 3),
-    3
+    new Float32Array(trailVertexCount * 4),
+    4
   );
   const trailColorVertex = new THREE.StorageBufferAttribute(
     new Float32Array(trailVertexCount * 4),
@@ -147,9 +147,9 @@ export function createTrailStorageNodes(
   const trailVertexCount = maxParticles * (trailLength - 1) * 2;
 
   return {
-    trail: storage(buffers.trail, 'vec3', maxParticles * trailLength),
+    trail: storage(buffers.trail, 'vec4', maxParticles * trailLength),
     trailIndex: storage(buffers.trailIndex, 'uint', maxParticles),
-    trailVertex: storage(buffers.trailVertex, 'vec3', trailVertexCount),
+    trailVertex: storage(buffers.trailVertex, 'vec4', trailVertexCount),
     trailColorVertex: storage(buffers.trailColorVertex, 'vec4', trailVertexCount),
   };
 }
