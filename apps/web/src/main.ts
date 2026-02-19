@@ -176,6 +176,26 @@ const presetConfigs: PresetUIConfig[] = [
 
 particleSliderValue.textContent = currentParticleCount.toLocaleString();
 
+// Slider progress fill handler
+function updateSliderProgress(slider: HTMLInputElement): void {
+  const min = parseFloat(slider.min);
+  const max = parseFloat(slider.max);
+  const value = parseFloat(slider.value);
+  const progress = ((value - min) / (max - min)) * 100;
+  slider.style.setProperty("--slider-progress", `${progress}%`);
+}
+
+// Initialize all slider progress fills
+function initSliderProgress(): void {
+  const sliders = [particleSlider, gravitySlider, dragSlider, windSlider, vortexSlider];
+  sliders.forEach((slider) => {
+    updateSliderProgress(slider);
+    slider.addEventListener("input", () => updateSliderProgress(slider));
+  });
+}
+
+initSliderProgress();
+
 function setActivePresetInfo(name: string, description: string): void {
   activePresetNameEl.textContent = name;
   activePresetDescriptionEl.textContent = description;
@@ -318,6 +338,11 @@ function updateUISliders(gravity: number, drag: number, wind: number, vortex: nu
   dragSlider.value = drag.toString();
   windSlider.value = wind.toString();
   vortexSlider.value = vortex.toString();
+  // Update slider progress fills
+  updateSliderProgress(gravitySlider);
+  updateSliderProgress(dragSlider);
+  updateSliderProgress(windSlider);
+  updateSliderProgress(vortexSlider);
 }
 
 function setPauseUI(): void {
@@ -438,6 +463,13 @@ resetBtn.addEventListener("click", async () => {
   trailsEnabled = false;
   isPaused = false;
   setPauseUI();
+
+  // Update slider progress fills
+  updateSliderProgress(particleSlider);
+  updateSliderProgress(gravitySlider);
+  updateSliderProgress(dragSlider);
+  updateSliderProgress(windSlider);
+  updateSliderProgress(vortexSlider);
 
   activePresetConfig = null;
   isDefaultPresetActive = true;

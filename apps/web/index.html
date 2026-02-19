@@ -7,6 +7,14 @@
       content="width=device-width, initial-scale=1.0"
     />
 
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
     <!-- Branding -->
     <title>Nova Particles - Next-Gen GPU Particle System</title>
     <link rel="canonical" href="http://localhost:3000/" />
@@ -47,7 +55,7 @@
 
     <main id="main-content" tabindex="-1">
       <div id="info" class="panel">
-        <h1>✨ Nova Particles</h1>
+        <h1>Nova Particles</h1>
         <p>Next-gen particle system powered by WebGPU compute shaders.</p>
         <p>
           Simulating
@@ -86,11 +94,7 @@
             step="1000"
             aria-label="Particle count"
           />
-          <span
-            id="particle-slider-value"
-            style="min-width: 60px; text-align: right"
-            >10,000</span
-          >
+          <span id="particle-slider-value" class="control-value">10,000</span>
         </div>
 
         <div class="control-group">
@@ -146,24 +150,24 @@
         </div>
 
         <div class="control-group">
-          <label for="trails-checkbox" style="cursor: pointer">Trails</label>
+          <label for="trails-checkbox">Trails</label>
           <input type="checkbox" id="trails-checkbox" />
         </div>
       </div>
 
       <div id="presets" role="group" aria-label="Effect presets">
-        <button id="preset-default" class="preset-btn">Default</button>
-        <button id="preset-fireworks" class="preset-btn">🎆 Fireworks</button>
-        <button id="preset-nebula" class="preset-btn">🌌 Nebula</button>
-        <button id="preset-lightning" class="preset-btn">⚡ Lightning</button>
-        <button id="preset-portal" class="preset-btn">🌀 Portal</button>
-        <button id="preset-fireflies" class="preset-btn">✨ Fireflies</button>
-        <button id="preset-snowfall" class="preset-btn">❄️ Snowfall</button>
-        <button id="preset-energy" class="preset-btn">💥 Energy</button>
-        <button id="preset-toxic" class="preset-btn">☢️ Toxic</button>
-        <button id="preset-blackhole" class="preset-btn">🕳️ Black Hole</button>
-        <button id="preset-aurora" class="preset-btn">🌈 Aurora</button>
-        <button id="preset-supernova" class="preset-btn">☀️ Supernova</button>
+        <button id="preset-default" class="preset-btn" data-category="default">Default</button>
+        <button id="preset-fireworks" class="preset-btn" data-category="fire">Fireworks</button>
+        <button id="preset-nebula" class="preset-btn" data-category="cosmic">Nebula</button>
+        <button id="preset-lightning" class="preset-btn" data-category="energy">Lightning</button>
+        <button id="preset-portal" class="preset-btn" data-category="cosmic">Portal</button>
+        <button id="preset-fireflies" class="preset-btn" data-category="nature">Fireflies</button>
+        <button id="preset-snowfall" class="preset-btn" data-category="weather">Snowfall</button>
+        <button id="preset-energy" class="preset-btn" data-category="energy">Energy</button>
+        <button id="preset-toxic" class="preset-btn" data-category="nature">Toxic</button>
+        <button id="preset-blackhole" class="preset-btn" data-category="cosmic">Black Hole</button>
+        <button id="preset-aurora" class="preset-btn" data-category="weather">Aurora</button>
+        <button id="preset-supernova" class="preset-btn" data-category="fire">Supernova</button>
       </div>
 
       <nav id="site-links" class="panel" aria-label="Site links">
