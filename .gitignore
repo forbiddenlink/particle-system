@@ -46,3 +46,12 @@ __pycache__/
 .codacy/
 test_run/
 supabase/.temp/
+
+# Build output
+.next/
+dist/
+build/
+out/
+
+# Vercel
+.vercel
