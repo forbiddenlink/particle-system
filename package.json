@@ -1,5 +1,5 @@
 {
-  "name": "nova-particles",
+  "name": "particle-system",
   "version": "0.1.0",
   "private": true,
   "description": "Next-generation 3D particle system creator with WebGPU compute shaders and node-based visual editor",
