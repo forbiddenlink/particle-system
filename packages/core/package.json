@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.0",
     "three": "^0.172.0",
     "typescript": "^5.3.3",
     "vite": "^5.4.0",
