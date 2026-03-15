@@ -32,3 +32,17 @@ coverage/
 
 # Specter knowledge graph cache
 .specter/
+.claude
+.claude/
+.playwright-mcp
+.playwright-mcp/
+.history
+.history/
+playwright-report
+playwright-report/
+__pycache__
+__pycache__/
+.codacy
+.codacy/
+test_run/
+supabase/.temp/

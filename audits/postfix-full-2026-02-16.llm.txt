@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<audit version="0.0.33">
+<site url="http://localhost:3001" crawled="4" date="2026-02-16T21:10:48.516Z"/>
+<score overall="61" grade="D">
+ <cat name="Performance" score="85"/>
+ <cat name="Security" score="35"/>
+ <cat name="Core SEO" score="83"/>
+ <cat name="E-E-A-T" score="53"/>
+ <cat name="Content" score="95"/>
+ <cat name="Crawlability" score="97"/>
+ <cat name="Social Media" score="75"/>
+ <cat name="Accessibility" score="100"/>
+ <cat name="Internationalization" score="100"/>
+ <cat name="Images" score="100"/>
+ <cat name="Legal Compliance" score="100"/>
+ <cat name="Links" score="100"/>
+ <cat name="Mobile" score="100"/>
+ <cat name="URL Structure" score="100"/>
+</score>
+<summary passed="336" warnings="47" failed="8"/>
+<issues>
+ <category name="Crawlability" errors="0" warnings="2">
+  <rule id="crawl/sitemap-coverage" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/crawl/sitemap-coverage">
+   4 indexable page(s) not in sitemap (100%); 4 sitemap URL(s) were not crawled
+   Items (8):
+    - /
+    - /about/index.html
+    - /contact/index.html
+    - /privacy-policy/index.html
+    - http://localhost:3000/
+    - http://localhost:3000/about/index.html
+    - http://localhost:3000/contact/index.html
+    - http://localhost:3000/privacy-policy/index.html
+  </rule>
+ </category>
+ <category name="Core SEO" errors="0" warnings="20">
+  <rule id="core/meta-title" severity="error" status="warn" docs="https://docs.squirrelscan.com/rules/core/meta-title">
+   Title too short (20 chars, min 30); Title too short (22 chars, min 30)
+   Pages (2): /about/index.html, /contact/index.html
+  </rule>
+  <rule id="core/meta-description" severity="error" status="warn" docs="https://docs.squirrelscan.com/rules/core/meta-description">
+   Description too short (117 chars, min 120); Description too short (88 chars, min 120)
+   Pages (2): /about/index.html, /contact/index.html
+  </rule>
+  <rule id="core/charset" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/core/charset">
+   UTF-8 charset declared but not at start of head
+   Pages (1): /
+  </rule>
+  <rule id="core/og-tags" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/core/og-tags">
+   Missing og:title; Missing og:description; Missing og:image - social shares will lack imagery
+   Pages (3): /about/index.html, /contact/index.html, /privacy-policy/index.html
+   Items (9):
+    - /about/index.html
+    - /contact/index.html
+    - /privacy-policy/index.html
+    - /about/index.html
+    - /contact/index.html
+    - /privacy-policy/index.html
+    - /about/index.html
+    - /contact/index.html
+    - /privacy-policy/index.html
+  </rule>
+  <rule id="core/favicon" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/core/favicon">
+   No favicon found
+   Pages (3): /about/index.html, /contact/index.html, /privacy-policy/index.html
+  </rule>
+  <rule id="core/twitter-cards" severity="info" status="warn" docs="https://docs.squirrelscan.com/rules/core/twitter-cards">
+   No Twitter card or Open Graph tags for Twitter sharing
+   Pages (3): /about/index.html, /contact/index.html, /privacy-policy/index.html
+  </rule>
+ </category>
+ <category name="Security" errors="4" warnings="3">
+  <rule id="security/leaked-secrets" severity="error" status="warn" docs="https://docs.squirrelscan.com/rules/security/leaked-secrets">
+   2 potential secret(s) detected (verify manually)
+   Items (2):
+    - DigitalOcean Spaces Key: DO0FBQ*************FDRD (Found in external-script (http://localhost:3001/@vite/client))
+    - DigitalOcean Spaces Key: DO0FBQ*************FDRC (Found in external-script (http://localhost:3001/@vite/client))
+  </rule>
+  <rule id="security/https" severity="error" status="fail" docs="https://docs.squirrelscan.com/rules/security/https">
+   Page not served over HTTPS
+   Pages (4): /, /about/index.html, /contact/index.html, /privacy-policy/index.html
+  </rule>
+  <rule id="security/csp" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/security/csp">
+   No Content-Security-Policy header
+  </rule>
+  <rule id="security/x-frame-options" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/security/x-frame-options">
+   No clickjacking protection
+  </rule>
+ </category>
+ <category name="Content" errors="0" warnings="4">
+  <rule id="content/word-count" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/content/word-count">
+   Thin content: 265 words (min 300); Thin content: 225 words (min 300); Thin content: 126 words (min 300); Thin content: 177 words (min 300)
+   Pages (4): /, /about/index.html, /contact/index.html, /privacy-policy/index.html
+  </rule>
+ </category>
+ <category name="Performance" errors="4" warnings="12">
+  <rule id="perf/compression" severity="warning" status="fail" docs="https://docs.squirrelscan.com/rules/perf/compression">
+   No compression detected (7KB uncompressed); No compression detected (3KB uncompressed); No compression detected (2KB uncompressed)
+   Pages (4): /, /about/index.html, /privacy-policy/index.html, /contact/index.html
+  </rule>
+  <rule id="perf/critical-request-chains" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/perf/critical-request-chains">
+   1 critical request chain(s) found
+   Pages (3): /about/index.html, /contact/index.html, /privacy-policy/index.html
+   Items (1):
+    - CSS: /site-pages.css
+  </rule>
+  <rule id="perf/unminified-js" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/perf/unminified-js">
+   2 JavaScript file(s) appear unminified
+   Pages (4): /, /about/index.html, /contact/index.html, /privacy-policy/index.html
+   Items (2):
+    - client (134.8KB, ~113.5KB savings) [reason: high newlines (0.60%), 28 comments, long function names]
+    - main.ts (32.6KB, ~0.6KB savings) [reason: high newlines (0.85%), formatted code]
+  </rule>
+  <rule id="perf/http2" severity="info" status="warn" docs="https://docs.squirrelscan.com/rules/perf/http2">
+   HTTP/2 requires HTTPS
+   Pages (4): /, /about/index.html, /contact/index.html, /privacy-policy/index.html
+  </rule>
+  <rule id="perf/source-maps" severity="info" status="warn" docs="https://docs.squirrelscan.com/rules/perf/source-maps">
+   1 inline source map(s) found
+   Pages (1): /
+   Items (1):
+    - /@vite/client
+  </rule>
+ </category>
+ <category name="Social Media" errors="0" warnings="1">
+  <rule id="social/og-url-match" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/social/og-url-match">
+   og:url does not match canonical URL
+   Pages (1): /
+  </rule>
+ </category>
+ <category name="E-E-A-T" errors="0" warnings="5">
+  <rule id="eeat/about-page" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/eeat/about-page">
+   No About page found
+  </rule>
+  <rule id="eeat/author-byline" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/eeat/author-byline">
+   No content pages have author attribution
+  </rule>
+  <rule id="eeat/contact-page" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/eeat/contact-page">
+   No Contact page found
+  </rule>
+  <rule id="eeat/privacy-policy" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/eeat/privacy-policy">
+   No Privacy Policy page found
+  </rule>
+  <rule id="eeat/content-dates" severity="warning" status="warn" docs="https://docs.squirrelscan.com/rules/eeat/content-dates">
+   No content pages have datePublished
+  </rule>
+ </category>
+</issues>
+</audit>
+
+
