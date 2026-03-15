@@ -18,8 +18,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
       three:
-        specifier: ^0.172.0
-        version: 0.172.0
+        specifier: ^0.183.2
+        version: 0.183.2
     devDependencies:
       '@types/three':
         specifier: ^0.170.0
@@ -40,8 +40,8 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(vitest@4.0.18)
       three:
-        specifier: ^0.172.0
-        version: 0.172.0
+        specifier: ^0.183.2
+        version: 0.183.2
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
@@ -1659,8 +1659,8 @@ packages:
     engines: {node: '>= 0.4'}
     dev: true
 
-  /three@0.172.0:
-    resolution: {integrity: sha512-6HMgMlzU97MsV7D/tY8Va38b83kz8YJX+BefKjspMNAv0Vx6dxMogHOrnRl/sbMIs3BPUKijPqDqJ/+UwJbIow==}
+  /three@0.183.2:
+    resolution: {integrity: sha512-di3BsL2FEQ1PA7Hcvn4fyJOlxRRgFYBpMTcyOgkwJIaDOdJMebEFPA+t98EvjuljDx4hNulAGwF6KIjtwI5jgQ==}
 
   /tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}

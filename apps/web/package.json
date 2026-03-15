@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@nova-particles/core": "workspace:*",
-    "three": "^0.172.0"
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
