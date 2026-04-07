@@ -12,7 +12,10 @@
     "preview": "pnpm --filter @nova-particles/web preview",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check . --write",
+    "biome:format": "biome format . --write"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

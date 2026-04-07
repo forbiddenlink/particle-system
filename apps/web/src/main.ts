@@ -1,8 +1,18 @@
 import * as THREE from "three/webgpu";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import posthog from "posthog-js";
 import { ParticleSystem } from "@nova-particles/core";
 import { applyPreset } from "./presets/AdvancedPresets.js";
 import "./style.css";
+
+// Initialize PostHog
+if (import.meta.env.VITE_POSTHOG_KEY) {
+  posthog.init(import.meta.env.VITE_POSTHOG_KEY as string, {
+    api_host: (import.meta.env.VITE_POSTHOG_HOST as string) || "https://us.posthog.com",
+    capture_pageview: true,
+    capture_pageleave: true,
+  });
+}
 
 // DOM elements
 const fpsEl = document.getElementById("fps")!;

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@nova-particles/core": "workspace:*",
+    "posthog-js": "^1.364.1",
     "three": "^0.172.0"
   },
   "devDependencies": {
