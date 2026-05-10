@@ -9,9 +9,12 @@ export default defineConfig({
     target: 'esnext',
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Split Three.js + TSL into separate cacheable chunk
-          three: ['three', 'three/tsl'],
+        // Vite 8 uses Rolldown which requires manualChunks as a function,
+        // not an object. Split Three.js + TSL into a cacheable chunk.
+        manualChunks(id) {
+          if (id.includes('node_modules/three')) {
+            return 'three';
+          }
         },
       },
     },
