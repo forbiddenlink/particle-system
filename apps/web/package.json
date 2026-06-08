@@ -11,12 +11,12 @@
   },
   "dependencies": {
     "@nova-particles/core": "workspace:*",
-    "posthog-js": "^1.376.0",
+    "posthog-js": "^1.383.1",
     "three": "^0.184.0"
   },
   "devDependencies": {
-    "@types/three": "^0.170.0",
+    "@types/three": "^0.184.1",
     "typescript": "^5.3.3",
-    "vite": "^8.0.14"
+    "vite": "^8.0.16"
   }
 }
