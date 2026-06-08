@@ -23,8 +23,8 @@ importers:
   .:
     devDependencies:
       typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
+        specifier: ^6.0.3
+        version: 6.0.3
 
   apps/web:
     dependencies:
@@ -42,8 +42,8 @@ importers:
         specifier: ^0.184.1
         version: 0.184.1
       typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
+        specifier: ^6.0.3
+        version: 6.0.3
       vite:
         specifier: '>=7.3.2'
         version: 8.0.16
@@ -60,14 +60,14 @@ importers:
         specifier: ^0.184.0
         version: 0.184.0
       typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
+        specifier: ^6.0.3
+        version: 6.0.3
       vite:
         specifier: '>=7.3.2'
         version: 8.0.16
       vite-plugin-dts:
         specifier: ^4.0.0
-        version: 4.5.4(typescript@5.9.3)(vite@8.0.16)
+        version: 4.5.4(typescript@6.0.3)(vite@8.0.16)
       vitest:
         specifier: ^4.1.8
         version: 4.1.8(@vitest/coverage-v8@4.1.8)(vite@8.0.16)
@@ -626,7 +626,7 @@ packages:
       he: 1.2.0
     dev: true
 
-  /@vue/language-core@2.2.0(typescript@5.9.3):
+  /@vue/language-core@2.2.0(typescript@6.0.3):
     resolution: {integrity: sha512-O1ZZFaaBGkKbsRfnVH1ifOK1/1BUkyK+3SQsfnh6PmMmD4qJcTU8godCeA96jjDRTL6zgnK7YzCHfaUlH2r0Mw==}
     peerDependencies:
       typescript: '*'
@@ -642,7 +642,7 @@ packages:
       minimatch: 10.2.5
       muggle-string: 0.4.1
       path-browserify: 1.0.1
-      typescript: 5.9.3
+      typescript: 6.0.3
     dev: true
 
   /@vue/shared@3.5.27:
@@ -1364,8 +1364,8 @@ packages:
     hasBin: true
     dev: true
 
-  /typescript@5.9.3:
-    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+  /typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
     hasBin: true
     dev: true
@@ -1385,7 +1385,7 @@ packages:
       punycode: 2.3.1
     dev: true
 
-  /vite-plugin-dts@4.5.4(typescript@5.9.3)(vite@8.0.16):
+  /vite-plugin-dts@4.5.4(typescript@6.0.3)(vite@8.0.16):
     resolution: {integrity: sha512-d4sOM8M/8z7vRXHHq/ebbblfaxENjogAAekcfcDCCwAyvGqnPrc7f4NZbvItS+g4WTgerW0xDwSz5qz11JT3vg==}
     peerDependencies:
       typescript: '*'
@@ -1397,13 +1397,13 @@ packages:
       '@microsoft/api-extractor': 7.56.2
       '@rollup/pluginutils': 5.3.0
       '@volar/typescript': 2.4.28
-      '@vue/language-core': 2.2.0(typescript@5.9.3)
+      '@vue/language-core': 2.2.0(typescript@6.0.3)
       compare-versions: 6.1.1
       debug: 4.4.3
       kolorist: 1.8.0
       local-pkg: 1.1.2
       magic-string: 0.30.21
-      typescript: 5.9.3
+      typescript: 6.0.3
       vite: 8.0.16
     transitivePeerDependencies:
       - '@types/node'
