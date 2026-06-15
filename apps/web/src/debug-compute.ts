@@ -9,7 +9,6 @@ export async function runDebugCompute(renderer: THREE.WebGPURenderer) {
   const storageNode = storage(buffer, 'float', count);
 
   // Simple compute: assign index to buffer
-  // @ts-expect-error - TSL compute shaders don't return values, but types require Node
   const computeNode = (Fn(() => {
     const i = instanceIndex;
     storageNode.element(i).assign(float(i));

@@ -15,15 +15,20 @@ export interface ParticleBuffers {
 }
 
 /**
- * TSL storage nodes for particle data
+ * TSL storage nodes for particle data.
+ *
+ * Each field is typed with the concrete element type passed to `storage()`.
+ * Using `ReturnType<typeof storage>` collapses every field to the last
+ * overload (`StorageBufferNode<"struct">`), which strips the swizzle
+ * accessors (`.x`, `.xyz`, `.w`) that the compute shaders rely on.
  */
 export interface ParticleStorageNodes {
-  position: ReturnType<typeof storage>;
-  velocity: ReturnType<typeof storage>;
-  color: ReturnType<typeof storage>;
-  life: ReturnType<typeof storage>;
-  size: ReturnType<typeof storage>;
-  rotation: ReturnType<typeof storage>;
+  position: THREE.StorageBufferNode<'vec4'>;
+  velocity: THREE.StorageBufferNode<'vec4'>;
+  color: THREE.StorageBufferNode<'vec4'>;
+  life: THREE.StorageBufferNode<'vec2'>;
+  size: THREE.StorageBufferNode<'float'>;
+  rotation: THREE.StorageBufferNode<'float'>;
 }
 
 /**
@@ -37,13 +42,15 @@ export interface TrailBuffers {
 }
 
 /**
- * TSL storage nodes for trail data
+ * TSL storage nodes for trail data.
+ *
+ * Typed with concrete element types (see ParticleStorageNodes note).
  */
 export interface TrailStorageNodes {
-  trail: ReturnType<typeof storage>;
-  trailIndex: ReturnType<typeof storage>;
-  trailVertex: ReturnType<typeof storage>;
-  trailColorVertex: ReturnType<typeof storage>;
+  trail: THREE.StorageBufferNode<'vec4'>;
+  trailIndex: THREE.StorageBufferNode<'uint'>;
+  trailVertex: THREE.StorageBufferNode<'vec4'>;
+  trailColorVertex: THREE.StorageBufferNode<'vec4'>;
 }
 
 /**

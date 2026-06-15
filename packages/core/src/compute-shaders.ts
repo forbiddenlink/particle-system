@@ -1,7 +1,7 @@
+import type { StorageBufferNode } from 'three/webgpu';
 // @ts-ignore - TSL types are incomplete
 import {
   Fn,
-  storage,
   instanceIndex,
   uniform,
   vec4,
@@ -13,16 +13,20 @@ import {
 } from 'three/tsl';
 
 /**
- * Storage nodes required for trail compute shader
+ * Storage nodes required for trail compute shader.
+ *
+ * Each field is typed with the concrete element type passed to `storage()`.
+ * `ReturnType<typeof storage>` would collapse them to `StorageBufferNode<"struct">`,
+ * stripping the swizzle accessors the shader relies on (`.x`, `.xyz`, ...).
  */
 export interface TrailComputeStorageNodes {
-  position: ReturnType<typeof storage>;
-  color: ReturnType<typeof storage>;
-  life: ReturnType<typeof storage>;
-  trail: ReturnType<typeof storage>;
-  trailIndex: ReturnType<typeof storage>;
-  trailVertex: ReturnType<typeof storage>;
-  trailColorVertex: ReturnType<typeof storage>;
+  position: StorageBufferNode<'vec4'>;
+  color: StorageBufferNode<'vec4'>;
+  life: StorageBufferNode<'vec2'>;
+  trail: StorageBufferNode<'vec4'>;
+  trailIndex: StorageBufferNode<'uint'>;
+  trailVertex: StorageBufferNode<'vec4'>;
+  trailColorVertex: StorageBufferNode<'vec4'>;
 }
 
 /**
@@ -60,7 +64,6 @@ export function createTrailCompute(
   const trailLengthUniform = uniform(trailLength);
   const fadeAlphaUniform = uniform(fadeAlpha ? 1 : 0);
 
-  // @ts-expect-error - TSL compute shaders don't return values
   return (Fn(() => {
     const i = instanceIndex;
 

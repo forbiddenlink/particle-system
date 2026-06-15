@@ -73,18 +73,18 @@ export class ParticleSystem extends THREE.Object3D {
   private trailStorageNodes: TrailStorageNodes | null = null;
 
   // TSL Storage nodes
-  private positionStorage: ReturnType<typeof storage> | null = null;
-  private velocityStorage: ReturnType<typeof storage> | null = null;
-  private colorStorage: ReturnType<typeof storage> | null = null;
-  private lifeStorage: ReturnType<typeof storage> | null = null;
-  private sizeStorage: ReturnType<typeof storage> | null = null;
+  private positionStorage: THREE.StorageBufferNode<'vec4'> | null = null;
+  private velocityStorage: THREE.StorageBufferNode<'vec4'> | null = null;
+  private colorStorage: THREE.StorageBufferNode<'vec4'> | null = null;
+  private lifeStorage: THREE.StorageBufferNode<'vec2'> | null = null;
+  private sizeStorage: THREE.StorageBufferNode<'float'> | null = null;
 
 
   // Trail storage nodes
-  private trailStorage: ReturnType<typeof storage> | null = null;
-  private trailIndexStorage: ReturnType<typeof storage> | null = null;
-  private trailVertexStorage: ReturnType<typeof storage> | null = null;
-  private trailColorVertexStorage: ReturnType<typeof storage> | null = null;
+  private trailStorage: THREE.StorageBufferNode<'vec4'> | null = null;
+  private trailIndexStorage: THREE.StorageBufferNode<'uint'> | null = null;
+  private trailVertexStorage: THREE.StorageBufferNode<'vec4'> | null = null;
+  private trailColorVertexStorage: THREE.StorageBufferNode<'vec4'> | null = null;
 
   // Compute shaders
   // @ts-ignore - TSL compute type
@@ -133,9 +133,12 @@ export class ParticleSystem extends THREE.Object3D {
     () => new THREE.Vector4(1, 1, 1, 1)
   );
 
-  // TSL uniform arrays for curves (initialized in initComputeShaders)
-  private sizeOverLifetimeUniform: ReturnType<typeof uniformArray> | null = null;
-  private colorOverLifetimeUniform: ReturnType<typeof uniformArray> | null = null;
+  // TSL uniform arrays for curves (initialized in initComputeShaders).
+  // Typed with the concrete element type passed to uniformArray() so element
+  // access keeps its swizzle accessors; ReturnType<typeof uniformArray> would
+  // infer UniformArrayNode<unknown> and strip them.
+  private sizeOverLifetimeUniform: THREE.UniformArrayNode<'float'> | null = null;
+  private colorOverLifetimeUniform: THREE.UniformArrayNode<'vec4'> | null = null;
 
   // Rendering
   private mesh!: THREE.Points;
@@ -408,14 +411,13 @@ export class ParticleSystem extends THREE.Object3D {
     const sizeStorage = this.sizeStorage!;
     
     const uniforms = this.uniforms;
-    this.sizeOverLifetimeUniform = uniformArray(this.sizeOverLifetimeSamples, 'float');
-    this.colorOverLifetimeUniform = uniformArray(this.colorOverLifetimeSamples, 'vec4');
+    this.sizeOverLifetimeUniform = uniformArray<'float'>(this.sizeOverLifetimeSamples, 'float');
+    this.colorOverLifetimeUniform = uniformArray<'vec4'>(this.colorOverLifetimeSamples, 'vec4');
 
     // Use a simpler hash function for randomness
     const rand = (seed: any) => hash(seed);
 
     // Initialize compute - sets up initial particle state
-    // @ts-expect-error - TSL compute shaders don't return values, but types require Node
     this.initCompute = (Fn(() => {
       const i = instanceIndex;
       const seed = float(i).add(uniforms.time);
@@ -456,7 +458,6 @@ export class ParticleSystem extends THREE.Object3D {
     })() as any).compute(count);
 
     // Update compute - runs every frame to simulate particles
-    // @ts-expect-error - TSL compute shaders don't return values, but types require Node
     this.updateCompute = (Fn(() => {
         const i = instanceIndex;
         
@@ -638,7 +639,6 @@ export class ParticleSystem extends THREE.Object3D {
     const testCount = 100;
     const testBuffer = new THREE.StorageBufferAttribute(new Float32Array(testCount), 1);
     const testStorage = storage(testBuffer, 'float', testCount);
-    // @ts-expect-error - TSL compute shaders don't return values, but types require Node
     const testNode = (Fn(() => {
         const i = instanceIndex;
         testStorage.element(i).assign(float(1.0));
