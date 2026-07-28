@@ -73,6 +73,8 @@ Nova Particles uses a **Structure of Arrays (SoA)** approach in GPU storage buff
 2.  **Compute Shaders**: Update particle state every frame based on physics and behaviors.
 3.  **Vertex Fetch**: The renderer reads directly from these buffers to draw instances, avoiding CPU-GPU data transfer.
 
+See [docs/architecture.md](docs/architecture.md) for the GPU pipeline flow and core module map (Mermaid diagrams).
+
 ## 📄 License
 
 MIT © Nova Particles Team
