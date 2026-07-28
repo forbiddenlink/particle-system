@@ -233,6 +233,18 @@ canvas {
   box-shadow: var(--shadow-button-hover), var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+.btn.recording,
+.btn.recording:hover {
+  background: #e5484d;
+  animation: recording-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  50% {
+    box-shadow: 0 0 0 4px rgba(229, 72, 77, 0.3);
+  }
+}
+
 .btn:active {
   transform: translateY(0);
   box-shadow: var(--shadow-button), inset 0 1px 0 rgba(255, 255, 255, 0.1);

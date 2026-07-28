@@ -1,7 +1,12 @@
 import * as THREE from "three/webgpu";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import posthog from "posthog-js";
-import { ParticleSystem, screenToWorldOnPlane } from "@nova-particles/core";
+import {
+  ParticleSystem,
+  screenToWorldOnPlane,
+  encodeState,
+  decodeState,
+} from "@nova-particles/core";
 import { applyPreset } from "./presets/AdvancedPresets.js";
 import "./style.css";
 
@@ -28,6 +33,8 @@ const randomPresetBtn = document.getElementById("random-preset-btn")!;
 const pointerForceBtn = document.getElementById(
   "pointer-force-btn",
 ) as HTMLButtonElement;
+const shareBtn = document.getElementById("share-btn") as HTMLButtonElement;
+const recordBtn = document.getElementById("record-btn") as HTMLButtonElement;
 const particleSlider = document.getElementById(
   "particle-slider",
 ) as HTMLInputElement;
@@ -667,9 +674,14 @@ async function init(): Promise<void> {
     return;
   }
 
+  // Restore shared state from the URL (sets count + controls) before building.
+  const restoredFromUrl = applyShareStateFromUrl();
+
   // Create initial particle system
   await createParticleSystem(currentParticleCount);
-  applyDefaultPresetUI();
+  if (!restoredFromUrl) {
+    applyDefaultPresetUI();
+  }
   setPauseUI();
   restoreBehaviorAfterRebuild();
 
@@ -681,6 +693,178 @@ async function init(): Promise<void> {
   // Start animation loop
   animate();
 }
+
+// --- Shareable permalink presets ------------------------------------------
+// The full control state is encoded into the ?p= query param so any tuning can
+// be shared or bookmarked as a link, and restored on load.
+interface ShareState {
+  count: number;
+  gravity: number;
+  drag: number;
+  wind: number;
+  vortex: number;
+  trails: boolean;
+  preset: string | null; // preset name, "default", or null for custom
+}
+
+function readControlsState(): ShareState {
+  return {
+    count: parseInt(particleSlider.value, 10),
+    gravity: parseFloat(gravitySlider.value),
+    drag: parseFloat(dragSlider.value),
+    wind: parseFloat(windSlider.value),
+    vortex: parseFloat(vortexSlider.value),
+    trails: trailsCheckbox.checked,
+    preset: activePresetConfig
+      ? activePresetConfig.presetName
+      : isDefaultPresetActive
+        ? "default"
+        : null,
+  };
+}
+
+function updatePermalink(): void {
+  const encoded = encodeState(readControlsState());
+  history.replaceState(null, "", `?p=${encoded}`);
+}
+
+function findPresetConfigByName(name: string): PresetUIConfig | undefined {
+  return presetConfigs.find((c) => c.presetName === name);
+}
+
+// Read a shared state from the URL into the controls. Returns true if applied.
+// Sets control values + currentParticleCount + preset selection, but does NOT
+// rebuild the system (init() does that right after).
+function applyShareStateFromUrl(): boolean {
+  const encoded = new URLSearchParams(location.search).get("p");
+  if (!encoded) return false;
+  const state = decodeState<ShareState>(encoded);
+  if (!state || typeof state.count !== "number") return false;
+
+  particleSlider.value = String(state.count);
+  particleSliderValue.textContent = state.count.toLocaleString();
+  currentParticleCount = state.count;
+  gravitySlider.value = String(state.gravity);
+  dragSlider.value = String(state.drag);
+  windSlider.value = String(state.wind);
+  vortexSlider.value = String(state.vortex);
+  trailsCheckbox.checked = state.trails;
+  trailsEnabled = state.trails;
+
+  const presetConfig = state.preset ? findPresetConfigByName(state.preset) : undefined;
+  if (presetConfig) {
+    activePresetConfig = presetConfig;
+    isDefaultPresetActive = false;
+    setActivePresetButton(presetConfig.button);
+    setActivePresetInfo(presetConfig.presetName, presetConfig.presetName);
+  } else if (state.preset === "default") {
+    activePresetConfig = null;
+    isDefaultPresetActive = true;
+  } else {
+    activePresetConfig = null;
+    isDefaultPresetActive = false;
+    setActivePresetButton(null);
+  }
+  return true;
+}
+
+// Keep the URL in sync whenever a state-affecting control changes.
+for (const el of [
+  particleSlider,
+  gravitySlider,
+  dragSlider,
+  windSlider,
+  vortexSlider,
+]) {
+  el.addEventListener("change", updatePermalink);
+}
+trailsCheckbox.addEventListener("change", updatePermalink);
+for (const config of presetConfigs) {
+  config.button.addEventListener("click", () => queueMicrotask(updatePermalink));
+}
+for (const btn of [resetBtn, randomPresetBtn]) {
+  btn.addEventListener("click", () => queueMicrotask(updatePermalink));
+}
+
+shareBtn.addEventListener("click", async () => {
+  updatePermalink();
+  const original = shareBtn.textContent;
+  try {
+    await navigator.clipboard.writeText(location.href);
+    shareBtn.textContent = "Link copied!";
+  } catch {
+    shareBtn.textContent = "Copy failed";
+  }
+  window.setTimeout(() => {
+    shareBtn.textContent = original;
+  }, 1500);
+});
+
+// --- Record canvas to WebM video ------------------------------------------
+// Uses the browser-native MediaRecorder over the canvas capture stream, so
+// there is no encoding dependency. Output is a downloadable .webm file.
+let mediaRecorder: MediaRecorder | null = null;
+let recordedChunks: Blob[] = [];
+
+function pickRecordingMimeType(): string {
+  const candidates = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+  ];
+  return candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+}
+
+function setRecordingUI(recording: boolean): void {
+  recordBtn.textContent = recording ? "● Stop" : "Record";
+  recordBtn.setAttribute("aria-pressed", recording ? "true" : "false");
+  recordBtn.classList.toggle("recording", recording);
+}
+
+function startRecording(): void {
+  const canvas = renderer.domElement as HTMLCanvasElement;
+  if (typeof canvas.captureStream !== "function" || typeof MediaRecorder === "undefined") {
+    recordBtn.textContent = "Unsupported";
+    recordBtn.disabled = true;
+    return;
+  }
+  const stream = canvas.captureStream(60);
+  const mimeType = pickRecordingMimeType();
+  mediaRecorder = new MediaRecorder(
+    stream,
+    mimeType ? { mimeType, videoBitsPerSecond: 12_000_000 } : undefined,
+  );
+  recordedChunks = [];
+  mediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0) recordedChunks.push(event.data);
+  };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: "video/webm" });
+    recordedChunks = [];
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nova-particles-${new Date().toISOString().replace(/[:.]/g, "-")}.webm`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  mediaRecorder.start();
+  setRecordingUI(true);
+}
+
+function stopRecording(): void {
+  mediaRecorder?.stop();
+  mediaRecorder = null;
+  setRecordingUI(false);
+}
+
+recordBtn.addEventListener("click", () => {
+  if (mediaRecorder) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+});
 
 init().catch((error) => {
   console.error("Initialization failed:", error);
