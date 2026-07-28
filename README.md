@@ -27,7 +27,7 @@ Nova Particles is a high-performance particle engine built with **Three.js** and
 
 ## 📚 Use as a Library
 
-The engine ships as `@nova-particles/core` (WebGPU + Three.js TSL). Once published:
+The engine ships as [`@nova-particles/core`](https://www.npmjs.com/package/@nova-particles/core) (WebGPU + Three.js TSL):
 
 ```bash
 pnpm add @nova-particles/core three
