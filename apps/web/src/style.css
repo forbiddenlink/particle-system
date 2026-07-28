@@ -1,7 +1,8 @@
 :root {
   /* Typography */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --font-display: "Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
 
   /* Type Scale - Refined */
   --text-display: 32px;
@@ -21,50 +22,54 @@
   --space-8: 48px;
 
   /* Layout calculations */
-  --controls-height: 56px;
+  --controls-height: 44px;
   --preset-row-offset: calc(var(--space-5) + var(--controls-height) + var(--space-3));
 
-  /* Neutrals */
-  --color-bg: #050510;
-  --color-surface-1: rgba(12, 12, 24, 0.72);
-  --color-surface-2: rgba(255, 255, 255, 0.06);
-  --color-surface-3: rgba(255, 255, 255, 0.10);
-  --color-border: rgba(255, 255, 255, 0.10);
-  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  /* Neutrals — cool violet-gray charcoal (hue 285), harmonizes with the
+     purple scene. Very low chroma = neutral-with-a-hint, not a "purple UI".
+     Flat, no glass. */
+  --color-bg: oklch(0.15 0.01 285);
+  --color-surface-1: oklch(0.21 0.012 285 / 0.92);
+  --color-surface-2: oklch(0.28 0.014 285 / 0.6);
+  --color-surface-3: oklch(0.32 0.016 285 / 0.8);
+  --color-border: oklch(0.44 0.02 285 / 0.35);
+  --color-border-subtle: oklch(0.44 0.02 285 / 0.2);
+  --color-tick: oklch(0.44 0.02 285 / 0.5);
 
-  /* Text */
-  --color-text: #ffffff;
-  --color-text-muted: rgba(255, 255, 255, 0.7);
-  --color-text-subtle: rgba(255, 255, 255, 0.5);
+  /* Text — cool neutrals */
+  --color-text: oklch(0.91 0.008 285);
+  --color-text-muted: oklch(0.66 0.014 285);
+  --color-text-subtle: oklch(0.52 0.014 285);
 
-  /* Accent */
-  --color-primary: #8b5cf6;
-  --color-primary-hover: #7c3aed;
-  --color-primary-muted: rgba(139, 92, 246, 0.15);
-  --color-primary-glow: rgba(139, 92, 246, 0.35);
+  /* Accent — refined matte violet (matches the scene). Desaturated vs. the
+     old neon #8b5cf6; no glow, no gradient — that's what kept it from slop. */
+  --color-primary: oklch(0.68 0.15 300);
+  --color-primary-hover: oklch(0.77 0.14 300);
+  --color-primary-muted: oklch(0.68 0.15 300 / 0.16);
+  --color-primary-glow: transparent;
 
   /* Semantic */
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
+  --color-success: oklch(0.68 0.15 300);
+  --color-warning: oklch(0.78 0.14 75);
+  --color-error: oklch(0.65 0.19 25);
 
-  /* Category colors */
-  --color-category-fire: #ef4444;
-  --color-category-cosmic: #8b5cf6;
-  --color-category-energy: #f59e0b;
-  --color-category-nature: #22c55e;
-  --color-category-weather: #3b82f6;
+  /* Category colors (functional dots — kept legible, slightly muted) */
+  --color-category-fire: oklch(0.68 0.19 30);
+  --color-category-cosmic: oklch(0.7 0.13 300);
+  --color-category-energy: oklch(0.8 0.14 80);
+  --color-category-nature: oklch(0.75 0.15 150);
+  --color-category-weather: oklch(0.7 0.12 240);
 
-  /* Surfaces */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  /* Surfaces — sharp, instrument-like radii; no glow */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
   --radius-full: 9999px;
-  --blur-panel: 16px;
-  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-button: 0 2px 4px rgba(0, 0, 0, 0.2);
-  --shadow-button-hover: 0 4px 8px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 20px var(--color-primary-glow);
+  --blur-panel: 0px;
+  --shadow-panel: 0 10px 30px oklch(0.12 0.01 60 / 0.55);
+  --shadow-button: none;
+  --shadow-button-hover: none;
+  --shadow-glow: none;
 
   /* Transitions */
   --duration-fast: 150ms;
@@ -140,19 +145,35 @@ canvas {
 #info {
   top: var(--space-5);
   left: var(--space-5);
-  max-width: 340px;
+  max-width: 300px;
+}
+
+/* Signature detail: viewfinder crop-marks at the four corners of the identity panel */
+#info::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  opacity: 0.55;
+  background:
+    linear-gradient(var(--color-primary), var(--color-primary)) 0 0 / 9px 1px no-repeat,
+    linear-gradient(var(--color-primary), var(--color-primary)) 0 0 / 1px 9px no-repeat,
+    linear-gradient(var(--color-primary), var(--color-primary)) 100% 0 / 9px 1px no-repeat,
+    linear-gradient(var(--color-primary), var(--color-primary)) 100% 0 / 1px 9px no-repeat,
+    linear-gradient(var(--color-primary), var(--color-primary)) 0 100% / 9px 1px no-repeat,
+    linear-gradient(var(--color-primary), var(--color-primary)) 0 100% / 1px 9px no-repeat,
+    linear-gradient(var(--color-primary), var(--color-primary)) 100% 100% / 9px 1px no-repeat,
+    linear-gradient(var(--color-primary), var(--color-primary)) 100% 100% / 1px 9px no-repeat;
 }
 
 #info h1 {
-  font-size: var(--text-display);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--text-h1);
+  font-weight: 500;
   margin-bottom: var(--space-3);
-  background: linear-gradient(135deg, #fff 0%, #a78bfa 50%, var(--color-primary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  display: inline-block;
-  letter-spacing: -0.03em;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
   line-height: 1.1;
 }
 
@@ -197,57 +218,95 @@ canvas {
   position: absolute;
   bottom: var(--space-5);
   left: var(--space-5);
-  right: 340px;
+  right: 300px;
   display: flex;
   flex-wrap: nowrap;
-  gap: var(--space-3);
+  gap: var(--space-2);
   z-index: 100;
   align-items: center;
   overflow-x: auto;
-  padding-bottom: var(--space-1);
   pointer-events: auto;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: var(--shadow-panel);
+  scrollbar-width: none;
+}
+
+#controls::-webkit-scrollbar {
+  display: none;
 }
 
 #controls > * {
   flex: 0 0 auto;
 }
 
-/* Button base */
+/* Button base — flat ghost, uppercase micro-label. Amber only when active. */
 .btn {
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  padding: 7px var(--space-3);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: var(--text-body);
-  font-weight: 600;
-  transition: all var(--duration-fast) var(--ease-out);
   font-family: var(--font-sans);
-  box-shadow: var(--shadow-button), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
 .btn:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-button-hover), var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+/* Toggled-on buttons (pause, pointer, audio, record, morph) read amber. */
+.btn[aria-pressed="true"] {
+  background: var(--color-primary-muted);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.text-input {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
+  font-family: var(--font-sans);
+  letter-spacing: 0.02em;
+  width: 6rem;
+}
+
+.text-input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .btn.recording,
 .btn.recording:hover {
-  background: #e5484d;
-  animation: recording-pulse 1.2s ease-in-out infinite;
+  background: var(--color-primary-muted);
+  color: var(--color-error);
+  border-color: var(--color-error);
+  animation: recording-pulse 1.4s ease-in-out infinite;
 }
 
 @keyframes recording-pulse {
   50% {
-    box-shadow: 0 0 0 4px rgba(229, 72, 77, 0.3);
+    border-color: oklch(0.65 0.19 25 / 0.4);
   }
 }
 
 .btn:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-button), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-3);
 }
 
 .btn:focus-visible {
@@ -261,102 +320,92 @@ canvas {
   transform: none;
 }
 
-/* Form elements */
+/* Form elements — flat rows, no cards; separated by hairline dividers. */
 .control-group {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  background: var(--color-surface-1);
-  backdrop-filter: blur(var(--blur-panel));
-  -webkit-backdrop-filter: blur(var(--blur-panel));
-  border: 1px solid var(--color-border);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-left: 1px solid var(--color-border-subtle);
   color: var(--color-text);
-  font-size: var(--text-body);
   user-select: none;
-  transition: background var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out);
-}
-
-.control-group:hover {
-  background: rgba(12, 12, 24, 0.82);
-  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .control-group label {
   color: var(--color-text-muted);
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .control-value {
-  min-width: 56px;
+  min-width: 48px;
   text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
-  color: var(--color-text);
+  color: var(--color-primary);
   font-weight: 500;
 }
 
 input[type="range"] {
   --slider-progress: 50%;
   -webkit-appearance: none;
-  width: 120px;
-  height: 6px;
-  background: linear-gradient(
-    to right,
-    var(--color-primary) 0%,
-    var(--color-primary) var(--slider-progress),
-    rgba(255, 255, 255, 0.15) var(--slider-progress),
-    rgba(255, 255, 255, 0.15) 100%
-  );
-  border-radius: 3px;
+  width: 96px;
+  height: 14px;
+  background:
+    /* tick marks every 12.5%, like a console fader */
+    repeating-linear-gradient(
+      90deg,
+      var(--color-tick) 0 1px,
+      transparent 1px 12.5%
+    ) center / 100% 8px no-repeat,
+    /* filled track */
+    linear-gradient(
+      to right,
+      var(--color-primary) 0%,
+      var(--color-primary) var(--slider-progress),
+      var(--color-surface-3) var(--slider-progress),
+      var(--color-surface-3) 100%
+    ) center / 100% 3px no-repeat;
   outline: none;
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-input[type="range"]:hover {
-  opacity: 0.9;
+  cursor: pointer;
 }
 
 input[type="range"]:focus-visible {
   outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
+  width: 4px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--color-text);
   cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
   border: none;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1);
+input[type="range"]:hover::-webkit-slider-thumb {
+  background: var(--color-primary);
 }
 
 input[type="range"]::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
+  width: 4px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--color-text);
   cursor: pointer;
   border: none;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
-input[type="range"]::-moz-range-progress {
+input[type="range"]:hover::-moz-range-thumb {
   background: var(--color-primary);
-  border-radius: 3px;
-  height: 6px;
 }
 
 /* Checkbox specific */
@@ -377,7 +426,7 @@ input[type="checkbox"]:focus-visible {
   position: absolute;
   bottom: var(--preset-row-offset);
   left: var(--space-5);
-  right: 340px;
+  right: 300px;
   display: flex;
   gap: var(--space-2);
   align-items: center;
@@ -398,17 +447,20 @@ input[type="checkbox"]:focus-visible {
 }
 
 .preset-btn {
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--text-caption);
+  padding: 6px var(--space-3);
+  font-family: var(--font-sans);
+  font-size: 11px;
   font-weight: 500;
-  border: 1px solid var(--color-border);
+  letter-spacing: 0.03em;
+  border: 1px solid var(--color-border-subtle);
   background: var(--color-surface-1);
-  backdrop-filter: blur(var(--blur-panel));
-  -webkit-backdrop-filter: blur(var(--blur-panel));
   color: var(--color-text-muted);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
   position: relative;
   overflow: hidden;
 }
@@ -443,8 +495,7 @@ input[type="checkbox"]:focus-visible {
 .preset-btn:hover {
   background: var(--color-surface-3);
   color: var(--color-text);
-  transform: translateY(-1px) scale(1.02);
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: var(--color-border);
 }
 
 .preset-btn:hover::before {
@@ -459,14 +510,12 @@ input[type="checkbox"]:focus-visible {
 .preset-btn-active {
   border-color: var(--color-primary);
   background: var(--color-primary-muted);
-  color: var(--color-text);
+  color: var(--color-primary);
   font-weight: 600;
-  box-shadow: 0 0 16px var(--color-primary-glow);
 }
 
 .preset-btn-active::before {
   opacity: 1;
-  box-shadow: 0 0 6px var(--category-color);
 }
 
 #site-links {
