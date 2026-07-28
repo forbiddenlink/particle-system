@@ -7,6 +7,8 @@ import {
   encodeState,
   decodeState,
   analyzeFrequencyBands,
+  sampleOpaquePoints,
+  type Point3,
 } from "@nova-particles/core";
 import { applyPreset } from "./presets/AdvancedPresets.js";
 import "./style.css";
@@ -37,6 +39,8 @@ const pointerForceBtn = document.getElementById(
 const shareBtn = document.getElementById("share-btn") as HTMLButtonElement;
 const recordBtn = document.getElementById("record-btn") as HTMLButtonElement;
 const audioBtn = document.getElementById("audio-btn") as HTMLButtonElement;
+const morphBtn = document.getElementById("morph-btn") as HTMLButtonElement;
+const morphTextInput = document.getElementById("morph-text") as HTMLInputElement;
 const particleSlider = document.getElementById(
   "particle-slider",
 ) as HTMLInputElement;
@@ -934,6 +938,50 @@ audioBtn.addEventListener("click", () => {
   } else {
     void enableAudio();
   }
+});
+
+// --- Text -> particles morph ----------------------------------------------
+// Renders the text to an offscreen canvas, samples the opaque pixels into a 3D
+// point cloud (sampleOpaquePoints), and pulls particles toward it via the
+// system's morph targets. Clicking again releases them back to free motion.
+let isMorphing = false;
+
+function textToPoints(text: string): Point3[] {
+  const width = 256;
+  const height = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return [];
+  ctx.clearRect(0, 0, width, height); // transparent background
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 90px system-ui, -apple-system, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, width / 2, height / 2);
+  const { data } = ctx.getImageData(0, 0, width, height);
+  return sampleOpaquePoints(data, width, height, { step: 2, spread: 24 });
+}
+
+function setMorphUI(on: boolean): void {
+  morphBtn.textContent = on ? "Release" : "Morph to text";
+  morphBtn.setAttribute("aria-pressed", on ? "true" : "false");
+}
+
+morphBtn.addEventListener("click", () => {
+  if (!particleSystem) return;
+  if (isMorphing) {
+    particleSystem.clearMorph();
+    isMorphing = false;
+    setMorphUI(false);
+    return;
+  }
+  const points = textToPoints(morphTextInput.value.trim() || "NOVA");
+  if (points.length === 0) return;
+  particleSystem.setMorphTargets(points, 5);
+  isMorphing = true;
+  setMorphUI(true);
 });
 
 init().catch((error) => {

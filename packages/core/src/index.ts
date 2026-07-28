@@ -50,3 +50,5 @@ export { screenToWorldOnPlane } from './pointer.js';
 export { encodeState, decodeState } from './serialize.js';
 
 export { analyzeFrequencyBands, type FrequencyBands } from './audio.js';
+
+export { sampleOpaquePoints, type Point3, type SampleOptions } from './textPoints.js';

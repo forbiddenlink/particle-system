@@ -12,6 +12,8 @@ export interface ParticleBuffers {
   life: THREE.StorageBufferAttribute;
   size: THREE.StorageBufferAttribute;
   rotation: THREE.StorageBufferAttribute;
+  /** Per-particle morph target position (xyz, w=1 when set). */
+  target: THREE.StorageBufferAttribute;
 }
 
 /**
@@ -29,6 +31,7 @@ export interface ParticleStorageNodes {
   life: THREE.StorageBufferNode<'vec2'>;
   size: THREE.StorageBufferNode<'float'>;
   rotation: THREE.StorageBufferNode<'float'>;
+  target: THREE.StorageBufferNode<'vec4'>;
 }
 
 /**
@@ -88,6 +91,11 @@ export function createParticleBuffers(maxParticles: number): ParticleBuffers {
       new Float32Array(maxParticles),
       1
     ),
+    // Morph target: vec4 per particle (xyz target position, w padding)
+    target: new THREE.StorageBufferAttribute(
+      new Float32Array(maxParticles * 4),
+      4
+    ),
   };
 }
 
@@ -105,6 +113,7 @@ export function createParticleStorageNodes(
     life: storage(buffers.life, 'vec2', maxParticles),
     size: storage(buffers.size, 'float', maxParticles),
     rotation: storage(buffers.rotation, 'float', maxParticles),
+    target: storage(buffers.target, 'vec4', maxParticles),
   };
 }
 

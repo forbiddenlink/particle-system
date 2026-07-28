@@ -34,6 +34,7 @@ const hash = Fn(([seed]: any[]) => {
     return fract(sin(s.mul(12.9898)).mul(43758.5453));
 });
 import type { ParticleSystemConfig, ValueRange, TrailConfig } from './types.js';
+import type { Point3 } from './textPoints.js';
 import { AnimationCurve, ColorGradient } from './curves.js';
 import { CURVE_SAMPLES } from './uniforms.js';
 import {
@@ -124,6 +125,9 @@ export class ParticleSystem extends THREE.Object3D {
     // Curve uniforms - use flags to enable/disable
     useSizeOverLifetime: uniform(0), // 0 = disabled, 1 = enabled
     useColorOverLifetime: uniform(0), // 0 = disabled, 1 = enabled
+    // Morph-to-target uniforms (text/image -> particles)
+    morphStrength: uniform(0), // 0 = disabled; higher pulls harder toward targets
+    targetCount: uniform(0), // number of valid entries in the target buffer
   };
 
   // Curve lookup tables (baked from AnimationCurve/ColorGradient)
@@ -409,7 +413,8 @@ export class ParticleSystem extends THREE.Object3D {
     const colorStorage = this.colorStorage!;
     const lifeStorage = this.lifeStorage!;
     const sizeStorage = this.sizeStorage!;
-    
+    const targetStorage = this.particleStorage!.target;
+
     const uniforms = this.uniforms;
     this.sizeOverLifetimeUniform = uniformArray<'float'>(this.sizeOverLifetimeSamples, 'float');
     this.colorOverLifetimeUniform = uniformArray<'vec4'>(this.colorOverLifetimeSamples, 'vec4');
@@ -551,6 +556,23 @@ export class ParticleSystem extends THREE.Object3D {
               },
             );
             
+            // Morph toward target shape (text/image -> particles).
+            // Particle i targets point i (guarded i < targetCount) — no modulo,
+            // which avoids a fragile uint modInt in the compiled shader. Extra
+            // particles beyond the point count stay free as an ambient cloud.
+            If(
+              uniforms.morphStrength.greaterThan(0.0).and(
+                int(i).lessThan(int(uniforms.targetCount)),
+              ),
+              () => {
+                const target = targetStorage.element(i);
+                const toTarget = target.xyz.sub(pos.xyz);
+                vel.xyz.addAssign(toTarget.mul(uniforms.morphStrength).mul(dt));
+                // Damp so particles settle into the shape instead of orbiting it.
+                vel.xyz.mulAssign(sub(1.0, float(0.08)));
+              },
+            );
+
             // Move
             pos.xyz.addAssign(vel.xyz.mul(dt));
 
@@ -762,6 +784,36 @@ export class ParticleSystem extends THREE.Object3D {
     this.uniforms.vortexPosition.value.set(posX, posY, posZ);
     this.uniforms.vortexAxis.value.set(axisX, axisY, axisZ).normalize();
     this.uniforms.vortexStrength.value = strength;
+  }
+
+  /**
+   * Morph particles toward a set of target positions (e.g. text or an image
+   * sampled via sampleOpaquePoints). Particle i is pulled toward target
+   * i % targetCount, so the shape fills regardless of particle count.
+   *
+   * @param points   Target positions in world space.
+   * @param strength Pull strength; higher snaps into the shape faster.
+   */
+  setMorphTargets(points: Point3[], strength: number = 5): void {
+    if (!this.particleBuffers) return;
+    const attr = this.particleBuffers.target;
+    const arr = attr.array as Float32Array;
+    const n = Math.min(points.length, this.maxParticles);
+    for (let k = 0; k < n; k++) {
+      const p = points[k];
+      arr[k * 4] = p.x;
+      arr[k * 4 + 1] = p.y;
+      arr[k * 4 + 2] = p.z;
+      arr[k * 4 + 3] = 1;
+    }
+    attr.needsUpdate = true;
+    this.uniforms.targetCount.value = n;
+    this.uniforms.morphStrength.value = strength;
+  }
+
+  /** Release the morph so particles resume free motion. */
+  clearMorph(): void {
+    this.uniforms.morphStrength.value = 0;
   }
 
   /**
