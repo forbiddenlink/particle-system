@@ -6,6 +6,7 @@ import {
   screenToWorldOnPlane,
   encodeState,
   decodeState,
+  analyzeFrequencyBands,
 } from "@nova-particles/core";
 import { applyPreset } from "./presets/AdvancedPresets.js";
 import "./style.css";
@@ -35,6 +36,7 @@ const pointerForceBtn = document.getElementById(
 ) as HTMLButtonElement;
 const shareBtn = document.getElementById("share-btn") as HTMLButtonElement;
 const recordBtn = document.getElementById("record-btn") as HTMLButtonElement;
+const audioBtn = document.getElementById("audio-btn") as HTMLButtonElement;
 const particleSlider = document.getElementById(
   "particle-slider",
 ) as HTMLInputElement;
@@ -326,6 +328,7 @@ function animate(): void {
 
   // Update particle system
   if (particleSystem) {
+    applyAudioReactivity();
     isAnimating = true;
     particleSystem
       .update(dt)
@@ -863,6 +866,73 @@ recordBtn.addEventListener("click", () => {
     stopRecording();
   } else {
     startRecording();
+  }
+});
+
+// --- Audio reactivity ------------------------------------------------------
+// Reads the microphone via Web Audio, splits the spectrum into bass/mid/treble
+// (analyzeFrequencyBands), and modulates forces each frame so particles pulse
+// to sound. Bass drives an outward beat pulse; treble spins the vortex.
+let audioContext: AudioContext | null = null;
+let audioAnalyser: AnalyserNode | null = null;
+let audioData: Uint8Array<ArrayBuffer> | null = null;
+let audioStream: MediaStream | null = null;
+
+function setAudioUI(on: boolean): void {
+  audioBtn.textContent = on ? "Audio: On" : "Audio: Off";
+  audioBtn.setAttribute("aria-pressed", on ? "true" : "false");
+}
+
+async function enableAudio(): Promise<void> {
+  try {
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    audioBtn.textContent = "Mic denied";
+    return;
+  }
+  audioContext = new AudioContext();
+  const source = audioContext.createMediaStreamSource(audioStream);
+  audioAnalyser = audioContext.createAnalyser();
+  audioAnalyser.fftSize = 256;
+  audioAnalyser.smoothingTimeConstant = 0.8;
+  source.connect(audioAnalyser);
+  audioData = new Uint8Array(audioAnalyser.frequencyBinCount);
+  setAudioUI(true);
+}
+
+function disableAudio(): void {
+  audioStream?.getTracks().forEach((track) => track.stop());
+  void audioContext?.close();
+  audioContext = null;
+  audioAnalyser = null;
+  audioData = null;
+  audioStream = null;
+  setAudioUI(false);
+  // Restore the user's manual force settings and release the beat pulse.
+  applyCurrentForceControls();
+  if (pointerForceMode === "off" && particleSystem) {
+    particleSystem.setAttractor(0, 0, 0, 0, POINTER_FORCE_RADIUS);
+  }
+}
+
+function applyAudioReactivity(): void {
+  if (!particleSystem || !audioAnalyser || !audioData) return;
+  audioAnalyser.getByteFrequencyData(audioData);
+  const { bass, treble } = analyzeFrequencyBands(audioData);
+  const baseVortex = parseFloat(vortexSlider.value);
+  particleSystem.setVortex(0, 0, 0, 0, 1, 0, baseVortex + treble * 10);
+  // Beat pulse: bass repels particles outward from the centre. Skipped while
+  // the pointer force owns the attractor uniform.
+  if (pointerForceMode === "off") {
+    particleSystem.setAttractor(0, 0, 0, -bass * 60, 14);
+  }
+}
+
+audioBtn.addEventListener("click", () => {
+  if (audioContext) {
+    disableAudio();
+  } else {
+    void enableAudio();
   }
 });
 

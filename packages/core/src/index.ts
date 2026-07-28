@@ -48,3 +48,5 @@ export { ParticleTextureGenerator, ParticleTextureAtlas, type ParticleTextureTyp
 export { screenToWorldOnPlane } from './pointer.js';
 
 export { encodeState, decodeState } from './serialize.js';
+
+export { analyzeFrequencyBands, type FrequencyBands } from './audio.js';
