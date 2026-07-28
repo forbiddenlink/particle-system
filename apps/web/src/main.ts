@@ -1,7 +1,7 @@
 import * as THREE from "three/webgpu";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import posthog from "posthog-js";
-import { ParticleSystem } from "@nova-particles/core";
+import { ParticleSystem, screenToWorldOnPlane } from "@nova-particles/core";
 import { applyPreset } from "./presets/AdvancedPresets.js";
 import "./style.css";
 
@@ -25,6 +25,9 @@ const activePresetDescriptionEl = document.getElementById(
 const resetBtn = document.getElementById("reset-btn")!;
 const pauseBtn = document.getElementById("pause-btn")!;
 const randomPresetBtn = document.getElementById("random-preset-btn")!;
+const pointerForceBtn = document.getElementById(
+  "pointer-force-btn",
+) as HTMLButtonElement;
 const particleSlider = document.getElementById(
   "particle-slider",
 ) as HTMLInputElement;
@@ -506,6 +509,84 @@ pauseBtn.addEventListener("click", () => {
 
 randomPresetBtn.addEventListener("click", () => {
   applyRandomPreset();
+});
+
+// --- Pointer force field ---------------------------------------------------
+// The cursor becomes an interactive attractor/repeller. Reuses the particle
+// system's live attractor uniforms (setAttractor), so no GPU change is needed:
+// on each pointer move we unproject the cursor onto the z=0 plane and push
+// that world point + a signed strength into the compute shader.
+type PointerForceMode = "off" | "attract" | "repel";
+const POINTER_FORCE_STRENGTH = 40;
+const POINTER_FORCE_RADIUS = 8;
+let pointerForceMode: PointerForceMode = "off";
+const pointerWorld = new THREE.Vector3();
+
+function pointerForceStrength(): number {
+  if (pointerForceMode === "attract") return POINTER_FORCE_STRENGTH;
+  if (pointerForceMode === "repel") return -POINTER_FORCE_STRENGTH;
+  return 0;
+}
+
+function updatePointerForceUI(): void {
+  const label =
+    pointerForceMode === "off"
+      ? "Pointer: Off"
+      : pointerForceMode === "attract"
+        ? "Pointer: Attract"
+        : "Pointer: Repel";
+  pointerForceBtn.textContent = label;
+  pointerForceBtn.setAttribute(
+    "aria-pressed",
+    pointerForceMode === "off" ? "false" : "true",
+  );
+}
+
+function applyPointerForceAt(clientX: number, clientY: number): void {
+  if (!particleSystem || pointerForceMode === "off") {
+    return;
+  }
+  const rect = renderer.domElement.getBoundingClientRect();
+  const ndc = {
+    x: ((clientX - rect.left) / rect.width) * 2 - 1,
+    y: -((clientY - rect.top) / rect.height) * 2 + 1,
+  };
+  const hit = screenToWorldOnPlane(ndc, camera);
+  if (!hit) {
+    return;
+  }
+  pointerWorld.copy(hit);
+  particleSystem.setAttractor(
+    pointerWorld.x,
+    pointerWorld.y,
+    pointerWorld.z,
+    pointerForceStrength(),
+    POINTER_FORCE_RADIUS,
+  );
+}
+
+renderer.domElement.addEventListener("pointermove", (event) => {
+  applyPointerForceAt(event.clientX, event.clientY);
+});
+
+pointerForceBtn.addEventListener("click", () => {
+  pointerForceMode =
+    pointerForceMode === "off"
+      ? "attract"
+      : pointerForceMode === "attract"
+        ? "repel"
+        : "off";
+  updatePointerForceUI();
+  // When switching off, release the attractor so particles settle back.
+  if (pointerForceMode === "off" && particleSystem) {
+    particleSystem.setAttractor(
+      pointerWorld.x,
+      pointerWorld.y,
+      pointerWorld.z,
+      0,
+      POINTER_FORCE_RADIUS,
+    );
+  }
 });
 
 particleSlider.addEventListener("input", () => {

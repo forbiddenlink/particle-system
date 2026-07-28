@@ -44,3 +44,5 @@ export type {
 } from './types.js';
 
 export { ParticleTextureGenerator, ParticleTextureAtlas, type ParticleTextureType } from './textures/index.js';
+
+export { screenToWorldOnPlane } from './pointer.js';
