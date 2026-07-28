@@ -25,6 +25,25 @@ Nova Particles is a high-performance particle engine built with **Three.js** and
 - **Build Tool**: Vite (for the web app)
 - **Package Manager**: pnpm
 
+## 📚 Use as a Library
+
+The engine ships as `@nova-particles/core` (WebGPU + Three.js TSL). Once published:
+
+```bash
+pnpm add @nova-particles/core three
+```
+
+```ts
+import { ParticleSystem } from "@nova-particles/core";
+
+const system = new ParticleSystem({ maxParticles: 500_000 });
+system.setGravity(0, -9.8, 0);
+// drive it from your own render loop:
+// await system.update(dt);
+```
+
+`three` is a peer dependency (`>=0.170.0`). The package is ESM-only and side-effect free.
+
 ## 🛠️ Getting Started
 
 ### Prerequisites
@@ -61,9 +80,14 @@ Nova Particles is a high-performance particle engine built with **Three.js** and
 - **Scroll**: Zoom in/out
 - **UI Controls**:
   - Adjust particle count (up to 1M)
-  - Tweak physics (gravity, drag, wind)
+  - Tweak physics (gravity, drag, wind, vortex)
   - Toggle trails
-  - Select presets (Fire, Smoke, Magic, Rainbow)
+  - Select presets (Fireworks, Nebula, Lightning, Portal, Fireflies, Snowfall, Energy, Toxic, Black Hole, Aurora, Supernova)
+- **Interactive tools**:
+  - **Pointer**: turn your cursor into an attract/repel force field
+  - **Audio**: react to your microphone — particles pulse to the beat
+  - **Share**: copy a link that encodes the exact configuration
+  - **Record**: capture the canvas to a downloadable WebM video
 
 ## 🧩 Architecture
 

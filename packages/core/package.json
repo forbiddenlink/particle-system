@@ -6,15 +6,28 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forbiddenlink/particle-system.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://novaparticles.com",
+  "bugs": {
+    "url": "https://github.com/forbiddenlink/particle-system/issues"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
