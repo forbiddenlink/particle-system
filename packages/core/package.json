@@ -41,7 +41,7 @@
     "three": ">=0.170.0"
   },
   "devDependencies": {
-    "@types/three": "^0.185.1",
+    "@types/three": "^0.185.3",
     "@vitest/coverage-v8": "^4.1.10",
     "three": "^0.185.1",
     "typescript": "^6.0.3",
