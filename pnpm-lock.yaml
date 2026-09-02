@@ -5,18 +5,18 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  esbuild: '>=0.25.0'
-  rollup: '>=4.59.0'
-  minimatch: '>=10.2.3'
-  vite: '>=7.3.2'
-  picomatch: '>=4.0.4'
-  lodash: '>=4.18.0'
-  protobufjs: '>=7.5.5'
-  fast-uri: '>=3.1.2'
-  axios: '>=1.13.5'
-  hono: '>=4.13.0'
-  flatted: '>=3.3.4'
-  undici: '>=7.0.0'
+  esbuild: '>=0.25.0 <1'
+  rollup: '>=4.59.0 <5'
+  minimatch: '>=10.2.3 <11'
+  vite: '>=7.3.2 <9'
+  picomatch: '>=4.0.4 <5'
+  lodash: '>=4.18.0 <5'
+  protobufjs: '>=7.5.5 <8'
+  fast-uri: '>=3.1.2 <4'
+  axios: '>=1.13.5 <2'
+  hono: '>=4.13.0 <5'
+  flatted: '>=3.3.4 <4'
+  undici: '>=7.0.0 <8'
 
 importers:
 
@@ -45,7 +45,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vite:
-        specifier: '>=7.3.2'
+        specifier: '>=7.3.2 <9'
         version: 8.2.2
 
   packages/core:
@@ -63,7 +63,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vite:
-        specifier: '>=7.3.2'
+        specifier: '>=7.3.2 <9'
         version: 8.2.2
       vite-plugin-dts:
         specifier: ^5.0.3
@@ -223,7 +223,7 @@ packages:
     resolution: {integrity: sha512-MfPp06CjRLfXQ3wY0R8vJDYBy/MvVcc9OulEfR0B8Iv9ko+GCNaRZ+EpJYFl27LhKsZK0o420sYCRHCjfCgeUg==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
-      rollup: '>=4.59.0'
+      rollup: '>=4.59.0 <5'
     peerDependenciesMeta:
       rollup:
         optional: true
@@ -271,7 +271,7 @@ packages:
     resolution: {integrity: sha512-2XJVD55d1o5AZous5CCGKS74g/riOj9odEt2bQpCVZeblHyHdnMeFl4jl0XjU21stf4mbjUkew2eXQZt65g5CQ==}
     peerDependencies:
       msw: ^2.4.9
-      vite: '>=7.3.2'
+      vite: '>=7.3.2 <9'
     peerDependenciesMeta:
       msw:
         optional: true
@@ -369,7 +369,7 @@ packages:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
     engines: {node: '>=12.0.0'}
     peerDependencies:
-      picomatch: '>=4.0.4'
+      picomatch: '>=4.0.4 <5'
     peerDependenciesMeta:
       picomatch:
         optional: true
@@ -611,11 +611,11 @@ packages:
       '@microsoft/api-extractor': '>=7'
       '@rspack/core': ^1
       '@vue/language-core': ^3.1.5
-      esbuild: '>=0.25.0'
+      esbuild: '>=0.25.0 <1'
       rolldown: '*'
-      rollup: '>=4.59.0'
+      rollup: '>=4.59.0 <5'
       typescript: '>=4'
-      vite: '>=7.3.2'
+      vite: '>=7.3.2 <9'
       webpack: ^4 || ^5
     peerDependenciesMeta:
       '@microsoft/api-extractor':
@@ -643,8 +643,8 @@ packages:
     resolution: {integrity: sha512-gIth6NdCEHWPiiRMCK3N6C8WjvdsrtEQrmsiG8h6Ov+lFP+b07Y+wcs9H0H7n146l0PDTYK4cQN1vgeG1pMdRQ==}
     peerDependencies:
       '@microsoft/api-extractor': '>=7'
-      rollup: '>=4.59.0'
-      vite: '>=7.3.2'
+      rollup: '>=4.59.0 <5'
+      vite: '>=7.3.2 <9'
     peerDependenciesMeta:
       '@microsoft/api-extractor':
         optional: true
@@ -660,7 +660,7 @@ packages:
     peerDependencies:
       '@types/node': ^20.19.0 || >=22.12.0
       '@vitejs/devtools': ^0.4.0 || ^0.5.0
-      esbuild: '>=0.25.0'
+      esbuild: '>=0.25.0 <1'
       jiti: '>=1.21.0'
       less: ^4.0.0
       sass: ^1.70.0
@@ -712,7 +712,7 @@ packages:
       '@vitest/ui': 4.1.11
       happy-dom: '*'
       jsdom: '*'
-      vite: '>=7.3.2'
+      vite: '>=7.3.2 <9'
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
