@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/forbiddenlink/particle-system/compare/v1.0.0...v1.0.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* **ci:** let pnpm/action-setup read the version from packageManager ([afde86d](https://github.com/forbiddenlink/particle-system/commit/afde86d4331a73980a9f5c6c8d817370abcb323c))
+* **deps:** give every resolution override an upper bound ([1b54513](https://github.com/forbiddenlink/particle-system/commit/1b54513c889e29bee8b9fa8be83d2b05883ef95e))
+
 ## 1.0.0 (2026-07-28)
 
 
