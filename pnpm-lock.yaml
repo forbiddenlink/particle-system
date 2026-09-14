@@ -57,8 +57,8 @@ importers:
         specifier: 4.1.11
         version: 4.1.11(vitest@4.1.11)
       three:
-        specifier: 0.185.1
-        version: 0.185.1
+        specifier: 0.186.0
+        version: 0.186.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -602,6 +602,9 @@ packages:
 
   three@0.185.1:
     resolution: {integrity: sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==}
+
+  three@0.186.0:
+    resolution: {integrity: sha512-cr/fIM2ddMSVbYVgkfD4jLJv7Fh/8ZTjvo+7gQeSVGUZHxpx9FDwoL5iC7hUz/LiRA8wMbqfnb90xKfm1/HHkQ==}
 
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
@@ -1217,6 +1220,8 @@ snapshots:
       has-flag: 4.0.0
 
   three@0.185.1: {}
+
+  three@0.186.0: {}
 
   tinybench@2.9.0: {}
 
