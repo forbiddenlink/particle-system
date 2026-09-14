@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/forbiddenlink/particle-system/compare/v1.0.1...v1.0.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* **web:** point contact and privacy addresses at novaparticles.com ([#52](https://github.com/forbiddenlink/particle-system/issues/52)) ([3659682](https://github.com/forbiddenlink/particle-system/commit/3659682eb97254c60e38266375a068a2995970a4))
+
 ## [1.0.1](https://github.com/forbiddenlink/particle-system/compare/v1.0.0...v1.0.1) (2026-09-02)
 
 
