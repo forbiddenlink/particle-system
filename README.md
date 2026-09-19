@@ -56,8 +56,8 @@ system.setGravity(0, -9.8, 0);
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/nova-particles.git
-   cd nova-particles
+   git clone https://github.com/forbiddenlink/particle-system.git
+   cd particle-system
    ```
 
 2. **Install dependencies:**
@@ -85,7 +85,7 @@ system.setGravity(0, -9.8, 0);
   - Select presets (Fireworks, Nebula, Lightning, Portal, Fireflies, Snowfall, Energy, Toxic, Black Hole, Aurora, Supernova)
 - **Interactive tools**:
   - **Pointer**: turn your cursor into an attract/repel force field
-  - **Audio**: react to your microphone — particles pulse to the beat
+  - **Audio**: react to your microphone: particles pulse to the beat
   - **Share**: copy a link that encodes the exact configuration
   - **Record**: capture the canvas to a downloadable WebM video
 

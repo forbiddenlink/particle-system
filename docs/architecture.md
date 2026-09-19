@@ -32,7 +32,7 @@ flowchart LR
 ```
 
 Key point: `Compute` reads and writes `Buffers`, and `Render` reads the same `Buffers`.
-No CPU-to-GPU transfer per frame — that is what allows 1M+ particles at 60fps.
+No CPU-to-GPU transfer per frame, which is what allows 1M+ particles at 60fps.
 
 ## Core module map
 
