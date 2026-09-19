@@ -25,7 +25,8 @@ A monorepo with two workspace packages, managed via pnpm:
 - `pnpm build` - `pnpm -r build` (builds core then web)
 - `pnpm test` - `pnpm --filter @nova-particles/core test` (vitest)
 - `pnpm preview` - `pnpm --filter @nova-particles/web preview`
-- `pnpm lint` / `pnpm typecheck` / `pnpm clean` - run across all workspaces (`pnpm -r`)
+- `pnpm typecheck` / `pnpm clean` - run across all workspaces (`pnpm -r`); `pnpm lint` is a
+  no-op (`pnpm -r lint`, but neither workspace defines a `lint` script) - use `pnpm biome:check`
 - `pnpm biome:check` / `pnpm biome:fix` / `pnpm biome:format`
 
 Inside `packages/core`: `pnpm build` (`vite build`), `pnpm dev` (`vite build --watch`),
@@ -60,7 +61,8 @@ curves, emitters, forces, pointer, serialize, textPoints). No tests in `apps/web
 
 ## Deploy
 
-Vercel (`.vercel/project.json` present; project name `particle-system`).
+Vercel. `vercel link` generates `.vercel/project.json` locally (gitignored, not committed);
+project name `particle-system`.
 
 ## Requirements
 

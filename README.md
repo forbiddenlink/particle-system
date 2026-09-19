@@ -49,7 +49,7 @@ system.setGravity(0, -9.8, 0);
 ### Prerequisites
 
 - **Node.js**: v18+
-- **pnpm**: v8+
+- **pnpm**: v10+
 - **Browser**: Chrome 113+, Edge 113+, or Safari 18+ (WebGPU support required)
 
 ### Installation
@@ -71,7 +71,7 @@ system.setGravity(0, -9.8, 0);
    ```
 
 4. **Open in browser:**
-   Navigate to `http://localhost:5173` to see the demo.
+   Navigate to `http://localhost:3000` to see the demo.
 
 ## 🎮 Usage Controls
 
