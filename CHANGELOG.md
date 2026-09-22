@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/forbiddenlink/particle-system/compare/v1.0.2...v1.0.3) (2026-09-22)
+
+
+### Bug Fixes
+
+* **deps:** update prod minor ([#58](https://github.com/forbiddenlink/particle-system/issues/58)) ([5e16645](https://github.com/forbiddenlink/particle-system/commit/5e166459634d7363f827bfd68615b34cc92d561f))
+
 ## [1.0.2](https://github.com/forbiddenlink/particle-system/compare/v1.0.1...v1.0.2) (2026-09-21)
 
 
