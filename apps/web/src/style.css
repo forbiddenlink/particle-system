@@ -355,7 +355,8 @@ input[type="range"] {
   --slider-progress: 50%;
   -webkit-appearance: none;
   width: 96px;
-  height: 14px;
+  /* 24px hit area (WCAG 2.5.8); the visible track and thumb are drawn smaller. */
+  height: 24px;
   background:
     /* tick marks every 12.5%, like a console fader */
     repeating-linear-gradient(
@@ -411,8 +412,9 @@ input[type="range"]:hover::-moz-range-thumb {
 /* Checkbox specific */
 input[type="checkbox"] {
   accent-color: var(--color-primary);
-  width: var(--space-4);
-  height: var(--space-4);
+  /* 24px minimum target (WCAG 2.5.8) */
+  width: 24px;
+  height: 24px;
   cursor: pointer;
 }
 
@@ -574,6 +576,7 @@ input[type="checkbox"]:focus-visible {
 
 /* Error message */
 .error-modal {
+  width: min(500px, calc(100vw - 32px));
   position: fixed;
   top: 50%;
   left: 50%;
@@ -604,6 +607,27 @@ input[type="checkbox"]:focus-visible {
   margin-bottom: var(--space-3);
 }
 
+.error-modal .error-detail {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.error-modal .modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/* Photosensitivity confirm: a caution, not an error. */
+.notice-modal {
+  border-color: var(--color-primary);
+}
+
+.notice-modal h2 {
+  color: var(--color-primary);
+}
+
 /* Mobile adjustments */
 @media (max-width: 768px) {
   :root {
@@ -611,7 +635,7 @@ input[type="checkbox"]:focus-visible {
   }
 
   #info {
-    top: var(--space-4);
+    top: calc(var(--space-4) + 40px);
     left: var(--space-4);
     right: var(--space-4);
     max-width: none;
@@ -621,11 +645,13 @@ input[type="checkbox"]:focus-visible {
     font-size: 24px;
   }
 
+  /* Top-right, one row, so it never sits under the controls bar. */
   #stats {
-    top: auto;
-    bottom: var(--space-4);
+    top: var(--space-4);
     right: var(--space-4);
-    padding: var(--space-2) var(--space-3);
+    flex-direction: row;
+    gap: var(--space-3);
+    padding: var(--space-1) var(--space-3);
     background: var(--color-surface-1);
     border: 1px solid var(--color-border-subtle);
     backdrop-filter: blur(var(--blur-panel));
@@ -633,10 +659,15 @@ input[type="checkbox"]:focus-visible {
     text-align: right;
   }
 
+  /* The bar scrolls sideways here. Fade the right edge, and pad past the fade so
+     the last control is fully visible once scrolled to the end. */
   #controls {
     bottom: var(--space-4);
     left: var(--space-4);
     right: var(--space-4);
+    padding-right: var(--space-8);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
   }
 
   #presets {

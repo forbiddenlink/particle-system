@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "pnpm --filter @nova-particles/web dev",
     "build": "pnpm -r build",
-    "test": "pnpm --filter @nova-particles/core test",
+    "test": "pnpm -r test",
     "preview": "pnpm --filter @nova-particles/web preview",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
@@ -18,6 +18,7 @@
     "biome:format": "biome format . --write"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "typescript": "6.0.3"
   },
   "engines": {
