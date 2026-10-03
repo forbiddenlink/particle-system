@@ -65,10 +65,14 @@ export function createTrailCompute(
   const fadeAlphaUniform = uniform(fadeAlpha ? 1 : 0);
 
   return (Fn(() => {
-    const i = instanceIndex;
+    // Cast: TSL types intersect the uint index with the int arithmetic below into
+    // `never`. The generated shader is unchanged; this only widens the compile-time type.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const i: any = instanceIndex;
 
     // Get current trail write index for this particle
-    const trailIdx = trailIndexStorage.element(i);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const trailIdx: any = trailIndexStorage.element(i);
 
     // Get particle state
     const pos = positionStorage.element(i);

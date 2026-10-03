@@ -13,8 +13,7 @@ A monorepo with two workspace packages, managed via pnpm:
 - Three.js ^0.185 (WebGPU renderer), TypeScript 6.0.3, Vite (build tool for both packages)
 - Workspaces managed via pnpm (`pnpm@10.34.5`, `pnpm-lock.yaml`); Node >=18
 - Biome for lint/format
-- Vitest for tests (`packages/core` only; has `test`, `test:watch`, `test:coverage`)
-- `apps/web` adds `posthog-js` for analytics
+- Vitest for tests (`packages/core` and `apps/web`; core also has `test:watch`, `test:coverage`)
 
 `@nova-particles/core` ships as an ESM-only, side-effect-free package (`three` is a peer dep,
 `>=0.170.0`).
@@ -51,13 +50,13 @@ Lightning, Portal, Fireflies, Snowfall, Energy, Toxic, Black Hole, Aurora, Super
 
 ## Env vars
 
-- `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST` - PostHog analytics in `apps/web` (read via
-  `import.meta.env`)
+None. The demo is a static site with no analytics or runtime configuration.
 
 ## Testing
 
 Tests live next to source as `*.test.ts` in `packages/core/src/` (ParticleSystem, audio,
-curves, emitters, forces, pointer, serialize, textPoints). No tests in `apps/web`.
+curves, emitters, forces, pointer, serialize, textPoints). `apps/web` has DOM-free helper tests
+(`src/runtime.test.ts`: backend label, frame-time clamp, failure streak).
 
 ## Deploy
 
