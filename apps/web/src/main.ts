@@ -1,6 +1,5 @@
 import * as THREE from "three/webgpu";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import posthog from "posthog-js";
 import {
   ParticleSystem,
   screenToWorldOnPlane,
@@ -11,16 +10,8 @@ import {
   type Point3,
 } from "@nova-particles/core";
 import { applyPreset } from "./presets/AdvancedPresets.js";
+import { FailureStreak, FrameClock, describeBackend } from "./runtime.js";
 import "./style.css";
-
-// Initialize PostHog
-if (import.meta.env.VITE_POSTHOG_KEY) {
-  posthog.init(import.meta.env.VITE_POSTHOG_KEY as string, {
-    api_host: (import.meta.env.VITE_POSTHOG_HOST as string) || "https://us.posthog.com",
-    capture_pageview: true,
-    capture_pageleave: true,
-  });
-}
 
 // DOM elements
 const fpsEl = document.getElementById("fps")!;
@@ -30,6 +21,7 @@ const activePresetNameEl = document.getElementById("active-preset-name")!;
 const activePresetDescriptionEl = document.getElementById(
   "active-preset-description",
 )!;
+const motionNoteEl = document.getElementById("motion-note")!;
 const resetBtn = document.getElementById("reset-btn")!;
 const pauseBtn = document.getElementById("pause-btn")!;
 const randomPresetBtn = document.getElementById("random-preset-btn")!;
@@ -90,6 +82,65 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
+// --- Failure state -----------------------------------------------------------
+// Anything that leaves the canvas without a working simulation (init error,
+// failed startup compute check, lost GPU device or context, repeated frame
+// errors) ends here: stop the loop and say what happened instead of showing a
+// blank or grid-only canvas. Idempotent: the first failure wins.
+let hasFailed = false;
+
+function failApp(reason: string): void {
+  if (hasFailed) return;
+  hasFailed = true;
+  console.error("Nova Particles stopped:", reason);
+
+  const panel = document.createElement("div");
+  panel.className = "error-modal";
+  panel.setAttribute("role", "alert");
+  panel.tabIndex = -1;
+
+  const heading = document.createElement("h2");
+  heading.textContent = "The particle simulation can't run";
+
+  const what = document.createElement("p");
+  what.textContent =
+    "The GPU simulation failed to start or stopped working, so there is nothing to show here.";
+
+  const advice = document.createElement("p");
+  advice.textContent =
+    "Try a browser with WebGPU support, such as a recent version of Chrome or Edge.";
+
+  const detail = document.createElement("p");
+  detail.className = "error-detail";
+  detail.textContent = `Details: ${reason}`;
+
+  const reload = document.createElement("button");
+  reload.type = "button";
+  reload.className = "btn";
+  reload.textContent = "Reload";
+  reload.addEventListener("click", () => location.reload());
+
+  panel.append(heading, what, advice, detail, reload);
+  document.body.appendChild(panel);
+  reload.focus();
+}
+
+// Three.js reports WebGPU device loss and WebGL context loss through this hook.
+renderer.onDeviceLost = (info: { api: string; message: string }) => {
+  failApp(`${info.api} device lost: ${info.message}`);
+};
+// A shader program that fails to link (for example WebGL2 with too few transform
+// feedback varyings) renders nothing and logs per frame. Treat it as fatal.
+renderer.debug.onShaderError = (gl, program) => {
+  const log = (gl as WebGL2RenderingContext).getProgramInfoLog(program as WebGLProgram) || "no log";
+  failApp(`A GPU shader failed to link: ${log.trim().slice(0, 200)}`);
+};
+// Direct listener too, so a lost WebGL context is caught even if the hook changes.
+renderer.domElement.addEventListener("webglcontextlost", (event) => {
+  event.preventDefault();
+  failApp("WebGL context lost");
+});
+
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -104,7 +155,9 @@ scene.add(gridHelper);
 let particleSystem: ParticleSystem | null = null;
 let currentParticleCount = parseInt(particleSlider.value, 10);
 let trailsEnabled = false;
-let isPaused = false;
+const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+// Honor prefers-reduced-motion: start paused (a still frame) with Resume one click away.
+let isPaused = reducedMotionQuery.matches;
 let currentPresetButton: HTMLButtonElement | null = presetDefault as HTMLButtonElement;
 
 interface PresetUIConfig {
@@ -112,6 +165,8 @@ interface PresetUIConfig {
   presetName: string;
   displayName: string;
   description: string;
+  /** Bright, rapid flashes: gated behind a one-time confirmation (WCAG 2.3.1). */
+  flashing?: boolean;
   sliders: {
     gravity: number;
     drag: number;
@@ -126,6 +181,7 @@ const presetConfigs: PresetUIConfig[] = [
     presetName: "Fireworks",
     displayName: "Fireworks",
     description: "Fast explosive launch with warm ember fade.",
+    flashing: true,
     sliders: { gravity: -15, drag: 0.05, wind: 0, vortex: 0 },
   },
   {
@@ -140,6 +196,7 @@ const presetConfigs: PresetUIConfig[] = [
     presetName: "Lightning Storm",
     displayName: "Lightning",
     description: "High-energy electric arcs with aggressive swirl.",
+    flashing: true,
     sliders: { gravity: 0, drag: 0.02, wind: 5, vortex: 8 },
   },
   {
@@ -168,6 +225,7 @@ const presetConfigs: PresetUIConfig[] = [
     presetName: "Energy Burst",
     displayName: "Energy",
     description: "Compressed charge release with bright core flashes.",
+    flashing: true,
     sliders: { gravity: 0, drag: 0.15, wind: 0, vortex: 0 },
   },
   {
@@ -196,6 +254,7 @@ const presetConfigs: PresetUIConfig[] = [
     presetName: "Supernova Ring",
     displayName: "Supernova",
     description: "Bright stellar blast ring with heated expansion.",
+    flashing: true,
     sliders: { gravity: -4, drag: 0.03, wind: 0.5, vortex: 6 },
   },
 ];
@@ -248,6 +307,9 @@ function applyDefaultPresetUI(): void {
   );
 }
 
+const PAUSED_WARMUP_STEPS = 30;
+const PAUSED_WARMUP_DT = 1 / 20;
+
 async function createParticleSystem(count: number): Promise<void> {
   // Dispose old system and clear reference immediately
   if (particleSystem) {
@@ -286,6 +348,10 @@ async function createParticleSystem(count: number): Promise<void> {
   await particleSystem.init(renderer);
   particleSystem.play();
   if (isPaused) {
+    // Advance a little first so the paused canvas shows a still frame, not nothing.
+    for (let step = 0; step < PAUSED_WARMUP_STEPS; step++) {
+      await particleSystem.update(PAUSED_WARMUP_DT);
+    }
     particleSystem.stop();
   }
 
@@ -312,20 +378,40 @@ function updateFPS(): void {
   }
 }
 
-// Clock for delta time
-const clock = new THREE.Clock();
+// Frame timing: deltas are clamped, and the gap while the tab is hidden is dropped.
+const frameClock = new FrameClock();
+const frameErrors = new FailureStreak();
 
 // Animation loop - uses a flag to prevent overlapping GPU operations
 let isAnimating = false;
+let frameRequested = false;
+
+// Single place that schedules a frame. A hidden tab or a failed app schedules nothing.
+function requestFrame(): void {
+  if (hasFailed || document.hidden || frameRequested) return;
+  frameRequested = true;
+  requestAnimationFrame(animate);
+}
+
+function onFrameError(err: unknown): void {
+  console.error("Frame error:", err);
+  if (frameErrors.fail()) {
+    const message = err instanceof Error ? err.message : String(err);
+    failApp(`Rendering failed repeatedly: ${message}`);
+  }
+}
 
 function animate(): void {
+  frameRequested = false;
+  if (hasFailed || document.hidden) return;
+
   // Prevent overlapping frames when GPU operations take longer than frame time
   if (isAnimating) {
-    requestAnimationFrame(animate);
+    requestFrame();
     return;
   }
 
-  const dt = clock.getDelta();
+  const dt = frameClock.tick(performance.now());
 
   // Update controls
   controls.update();
@@ -340,21 +426,36 @@ function animate(): void {
         // Render after GPU compute completes
         renderer.render(scene, camera);
         updateFPS();
-        isAnimating = false;
-        requestAnimationFrame(animate);
+        frameErrors.ok();
       })
-      .catch((err: unknown) => {
-        console.error("Particle update error:", err);
+      .catch(onFrameError)
+      .finally(() => {
         isAnimating = false;
-        requestAnimationFrame(animate);
+        requestFrame();
       });
   } else {
     // No particle system, just render
-    renderer.render(scene, camera);
-    updateFPS();
-    requestAnimationFrame(animate);
+    try {
+      renderer.render(scene, camera);
+      updateFPS();
+      frameErrors.ok();
+    } catch (err) {
+      onFrameError(err);
+    }
+    requestFrame();
   }
 }
+
+// Stop simulating while the tab is hidden; resume with a clean first frame.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    frameClock.suspend();
+    return;
+  }
+  frameCount = 0;
+  lastTime = performance.now();
+  requestFrame();
+});
 
 // Active preset state
 let activePresetConfig: PresetUIConfig | null = null;
@@ -375,7 +476,15 @@ function updateUISliders(gravity: number, drag: number, wind: number, vortex: nu
 function setPauseUI(): void {
   pauseBtn.textContent = isPaused ? "Resume" : "Pause";
   pauseBtn.setAttribute("aria-pressed", isPaused ? "true" : "false");
+  motionNoteEl.hidden = !(isPaused && reducedMotionQuery.matches);
 }
+
+// If the preference turns on mid-session, pause right away.
+reducedMotionQuery.addEventListener("change", (event) => {
+  if (event.matches && !isPaused) {
+    pauseBtn.click();
+  }
+});
 
 function applyCurrentForceControls(): void {
   if (!particleSystem) {
@@ -448,6 +557,91 @@ function applyPresetConfig(config: PresetUIConfig): void {
   setActivePresetInfo(config.displayName, config.description);
 }
 
+// --- Photosensitivity confirm -------------------------------------------------
+// Presets with bright rapid flashes ask once per page load before they play.
+let flashingAcknowledged = false;
+let deferredFlashPreset: PresetUIConfig | null = null;
+let flashDialogOpen = false;
+
+function confirmFlashing(effectName: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    flashDialogOpen = true;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+
+    const panel = document.createElement("div");
+    panel.className = "error-modal notice-modal";
+    panel.setAttribute("role", "alertdialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-labelledby", "flash-title");
+    panel.setAttribute("aria-describedby", "flash-text");
+
+    const heading = document.createElement("h2");
+    heading.id = "flash-title";
+    heading.textContent = "Flashing lights";
+
+    const text = document.createElement("p");
+    text.id = "flash-text";
+    text.textContent = `${effectName} has bright, fast flashes. It may affect people who are sensitive to flashing lights.`;
+
+    const actions = document.createElement("div");
+    actions.className = "modal-actions";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "btn";
+    cancel.textContent = "Cancel";
+
+    const accept = document.createElement("button");
+    accept.type = "button";
+    accept.className = "btn";
+    accept.textContent = "Show effect";
+
+    actions.append(cancel, accept);
+    panel.append(heading, text, actions);
+
+    const close = (result: boolean): void => {
+      panel.removeEventListener("keydown", onKeydown);
+      panel.remove();
+      flashDialogOpen = false;
+      previouslyFocused?.focus();
+      resolve(result);
+    };
+
+    function onKeydown(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close(false);
+      } else if (event.key === "Tab") {
+        // Keep focus inside the two buttons while the dialog is open.
+        const target = event.shiftKey ? cancel : accept;
+        const other = event.shiftKey ? accept : cancel;
+        if (document.activeElement === target) {
+          event.preventDefault();
+          other.focus();
+        }
+      }
+    }
+
+    cancel.addEventListener("click", () => close(false));
+    accept.addEventListener("click", () => close(true));
+    panel.addEventListener("keydown", onKeydown);
+
+    document.body.appendChild(panel);
+    cancel.focus();
+  });
+}
+
+async function requestPresetConfig(config: PresetUIConfig): Promise<void> {
+  if (config.flashing && !flashingAcknowledged) {
+    if (flashDialogOpen) return;
+    const accepted = await confirmFlashing(config.displayName);
+    if (!accepted) return;
+    flashingAcknowledged = true;
+  }
+  applyPresetConfig(config);
+  queueMicrotask(updatePermalink);
+}
+
 function applyDefaultPreset(): void {
   if (!particleSystem) {
     return;
@@ -468,8 +662,11 @@ function applyRandomPreset(): void {
     return;
   }
 
-  const pool = presetConfigs.filter((preset) => preset !== activePresetConfig);
-  const candidates = pool.length > 0 ? pool : presetConfigs;
+  // Shuffle never springs a flashing preset on someone who has not opted in.
+  const pool = presetConfigs.filter(
+    (preset) => preset !== activePresetConfig && (flashingAcknowledged || !preset.flashing),
+  );
+  const candidates = pool.length > 0 ? pool : presetConfigs.filter((p) => !p.flashing);
   const randomPreset = candidates[Math.floor(Math.random() * candidates.length)];
   applyPresetConfig(randomPreset);
 }
@@ -488,7 +685,7 @@ resetBtn.addEventListener("click", async () => {
   vortexSlider.value = "0";
   trailsCheckbox.checked = false;
   trailsEnabled = false;
-  isPaused = false;
+  isPaused = reducedMotionQuery.matches;
   setPauseUI();
 
   // Update slider progress fills
@@ -646,7 +843,7 @@ presetDefault.addEventListener("click", () => {
 
 for (const config of presetConfigs) {
   config.button.addEventListener("click", () => {
-    applyPresetConfig(config);
+    void requestPresetConfig(config);
   });
 }
 
@@ -657,6 +854,13 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Read (and clear) the first pending WebGL error, or 0 when there is none or the
+// backend is not WebGL.
+function takeWebGLError(): number {
+  const gl = (renderer as unknown as { backend?: { gl?: WebGL2RenderingContext } }).backend?.gl;
+  return gl ? gl.getError() : 0;
+}
+
 // Initialize
 async function init(): Promise<void> {
   console.log("🌟 Nova Particles - Initializing...");
@@ -664,22 +868,22 @@ async function init(): Promise<void> {
   // Initialize renderer
   await renderer.init();
 
-  // Detect backend
-  // @ts-ignore - backend property exists at runtime
-  const backend = renderer.backend?.constructor?.name || "Unknown";
-  backendEl.textContent = backend.includes("WebGPU")
-    ? "WebGPU ✓"
-    : "WebGL (fallback)";
+  // Detect backend with the flags Three sets on each backend class. The class
+  // name is minified in production, so it cannot be used for this.
+  const backend = describeBackend((renderer as unknown as { backend?: unknown }).backend);
+  backendEl.textContent = backend.label;
 
-  console.log(`Using backend: ${backend}`);
+  console.log(`Using backend: ${backend.label}`);
 
   // Debug step
   const { runDebugCompute } = await import('./debug-compute');
   const debugSuccess = await runDebugCompute(renderer);
   if (!debugSuccess) {
-    console.error('Debug compute failed, skipping full particle system init');
+    failApp("The startup GPU compute check failed.");
     return;
   }
+
+  takeWebGLError(); // clear anything left over from setup before measuring the real system
 
   // Restore shared state from the URL (sets count + controls) before building.
   const restoredFromUrl = applyShareStateFromUrl();
@@ -692,13 +896,31 @@ async function init(): Promise<void> {
   setPauseUI();
   restoreBehaviorAfterRebuild();
 
+  // The WebGL2 fallback can accept the compute dispatch yet record nothing (too few
+  // transform feedback varyings): it raises a GL error and the canvas stays empty.
+  // Run one real step and treat a GL error as failure rather than showing no particles.
+  if (backend.kind === "webgl") {
+    await particleSystem?.update(1 / 60);
+    const glError = takeWebGLError();
+    if (glError !== 0) {
+      failApp(`WebGL2 on this device cannot run the particle compute shaders (GL error ${glError}).`);
+      return;
+    }
+  }
+
   console.log("✅ Nova Particles initialized!");
   console.log(
     `Rendering ${currentParticleCount.toLocaleString()} particles with GPU compute shaders`,
   );
 
   // Start animation loop
-  animate();
+  requestFrame();
+
+  if (deferredFlashPreset) {
+    const pending = deferredFlashPreset;
+    deferredFlashPreset = null;
+    void requestPresetConfig(pending);
+  }
 }
 
 // --- Shareable permalink presets ------------------------------------------
@@ -758,7 +980,17 @@ function applyShareStateFromUrl(): boolean {
   trailsCheckbox.checked = state.trails;
   trailsEnabled = state.trails;
 
-  const presetConfig = state.preset ? findPresetConfigByName(state.preset) : undefined;
+  let presetConfig = state.preset ? findPresetConfigByName(state.preset) : undefined;
+  if (presetConfig?.flashing && !flashingAcknowledged) {
+    // A shared link must not start a flashing effect unprompted: load the default
+    // behavior now and ask once the app is up.
+    deferredFlashPreset = presetConfig;
+    presetConfig = undefined;
+    activePresetConfig = null;
+    isDefaultPresetActive = true;
+    applyDefaultPresetUI();
+    return true;
+  }
   if (presetConfig) {
     activePresetConfig = presetConfig;
     isDefaultPresetActive = false;
@@ -984,21 +1216,7 @@ morphBtn.addEventListener("click", () => {
   setMorphUI(true);
 });
 
-init().catch((error) => {
+init().catch((error: unknown) => {
   console.error("Initialization failed:", error);
-  // Show user-facing error for WebGPU failures
-  const errorDiv = document.createElement("div");
-  errorDiv.style.cssText = `
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: rgba(0,0,0,0.9); color: white; padding: 40px;
-    border-radius: 12px; text-align: center; font-family: system-ui, sans-serif;
-    max-width: 500px; z-index: 1000;
-  `;
-  errorDiv.innerHTML = `
-    <h2 style="color: #ff6b6b; margin-bottom: 20px;">⚠️ Initialization Failed</h2>
-    <p style="margin-bottom: 15px;">WebGPU may not be supported in your browser.</p>
-    <p style="color: #888; font-size: 14px;">Please try Chrome 113+, Edge 113+, or Safari 26+ with WebGPU enabled.</p>
-    <p style="color: #666; font-size: 12px; margin-top: 20px;">Error: ${error.message || error}</p>
-  `;
-  document.body.appendChild(errorDiv);
+  failApp(error instanceof Error ? error.message : String(error));
 });
