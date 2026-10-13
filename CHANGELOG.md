@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.4](https://github.com/forbiddenlink/particle-system/compare/v1.0.3...v1.0.4) (2026-10-13)
+
+
+### Bug Fixes
+
+* describe what exists and cap trail memory ([#68](https://github.com/forbiddenlink/particle-system/issues/68)) ([90042a0](https://github.com/forbiddenlink/particle-system/commit/90042a096522beeb17648551f454256b6be7ec05))
+* **web:** correct backend label, show failure states, harden loop and a11y ([#62](https://github.com/forbiddenlink/particle-system/issues/62)) ([b25dd4c](https://github.com/forbiddenlink/particle-system/commit/b25dd4cac412521a1a939f961085b274687be1b3))
+
 ## [1.0.3](https://github.com/forbiddenlink/particle-system/compare/v1.0.2...v1.0.3) (2026-09-22)
 
 
