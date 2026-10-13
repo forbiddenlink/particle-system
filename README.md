@@ -2,21 +2,35 @@
 
 ![Nova Particles Banner](docs/images/banner.png)
 
-> **Next-Generation GPU Particle System**
-> 
-> Simulate millions of particles at 60fps in your browser using WebGPU compute shaders.
+> **GPU Particle System for the Browser**
+>
+> Simulate large particle systems in your browser with WebGPU compute shaders and a WebGL2 fallback.
 
-Nova Particles is a high-performance particle engine built with **Three.js** and **WebGPU**. By leveraging compute shaders (via TSL - Three.js Shading Language), it offloads all physics calculations to the GPU, enabling massive simulations that were previously impossible in the browser.
+Nova Particles is a particle engine built with **Three.js** and **WebGPU**. Using compute shaders (via TSL, the Three.js Shading Language), it runs particle physics on the GPU. The demo app falls back to WebGL2 when WebGPU is unavailable.
 
 ## 🚀 Features
 
-- **Massive Scale**: Render 1M+ particles effortlessly at 60fps.
-- **GPU-First Architecture**: Physics, collision, and behavior all run on the GPU.
-- **WebGPU Powered**: Utilizes modern compute shaders for maximum parallelism.
-- **Flexible Emitters**: Support for Point, Sphere, Box, Cone, and Circle shapes.
-- **Advanced Behaviors**: Gravity, Drag, Wind, Vortex, and Noise forces.
-- **Rich Visuals**: Trail rendering, additive blending, and dynamic color gradients.
-- **Cross-Platform**: Built for WebGPU with graceful fallbacks (where applicable).
+- **GPU compute**: particle state updates run in WebGPU compute shaders. The UI exposes up to 1M particles; frame rate depends on your GPU and browser, and no benchmark is published yet.
+- **WebGPU with WebGL2 fallback**: the demo app uses the WebGPU backend when present and Three.js's WebGL2 backend otherwise.
+- **Flexible emitters**: Point, Sphere, Box, Cone, and Circle shapes.
+- **Forces**: Gravity, Drag, Wind, Vortex, and Noise.
+- **Presets**: Fireworks, Nebula, Lightning, Portal, Fireflies, Snowfall, Energy, Toxic, Black Hole, Aurora, and Supernova.
+- **Pointer forces**: turn the cursor into an attract or repel field.
+- **Audio reactive**: particles pulse to microphone input.
+- **Trails**: line-segment trails with alpha fade. Trail memory is capped at 2M positions (particle count x trail length); larger configurations get a shorter trail length, or trails are disabled.
+- **Share and record**: copy a link that encodes the configuration, or capture the canvas to WebM.
+
+## 🗺️ Roadmap
+
+Not implemented yet. Tracked as GitHub issues:
+
+- Node-based visual effect editor ([#31](https://github.com/forbiddenlink/particle-system/issues/31))
+- GPU collision, which needs spatial binning first ([#28](https://github.com/forbiddenlink/particle-system/issues/28))
+- GPU bitonic sort for correct alpha blending ([#27](https://github.com/forbiddenlink/particle-system/issues/27))
+- Boids / flocking on the GPU ([#29](https://github.com/forbiddenlink/particle-system/issues/29))
+- MLS-MPM fluid, snow, and jello simulation ([#30](https://github.com/forbiddenlink/particle-system/issues/30))
+- Emit from mesh surfaces and vertices ([#25](https://github.com/forbiddenlink/particle-system/issues/25))
+- Soft particles with depth-aware alpha fade ([#24](https://github.com/forbiddenlink/particle-system/issues/24))
 
 ## 📦 Tech Stack
 
@@ -50,7 +64,7 @@ system.setGravity(0, -9.8, 0);
 
 - **Node.js**: v18+
 - **pnpm**: v10+
-- **Browser**: Chrome 113+, Edge 113+, or Safari 18+ (WebGPU support required)
+- **Browser**: Chrome 113+, Edge 113+, or Safari 18+ for WebGPU. Other browsers with WebGL2 use the fallback backend.
 
 ### Installation
 

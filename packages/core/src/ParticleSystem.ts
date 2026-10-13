@@ -50,6 +50,7 @@ import {
   type TrailStorageNodes,
 } from './buffers.js';
 import { createTrailCompute } from './compute-shaders.js';
+import { fitTrailBudget } from './trail-budget.js';
 
 /** Default number of positions to store per particle for trails */
 const DEFAULT_TRAIL_LENGTH = 8;
@@ -179,9 +180,22 @@ export class ParticleSystem extends THREE.Object3D {
 
     // Initialize trail config from options
     if (config.trails) {
+      // Cap maxParticles x length so large systems cannot allocate hundreds of MB of trail buffers
+      const fitted = fitTrailBudget(
+        config.maxParticles,
+        config.trails.enabled,
+        config.trails.length ?? DEFAULT_TRAIL_LENGTH
+      );
+      if (fitted.adjusted) {
+        console.warn(
+          fitted.enabled
+            ? `ParticleSystem: trail length reduced to ${fitted.length} to fit the trail memory budget for ${config.maxParticles} particles.`
+            : `ParticleSystem: trails disabled, ${config.maxParticles} particles exceed the trail memory budget.`
+        );
+      }
       this.trailConfig = {
-        enabled: config.trails.enabled,
-        length: config.trails.length ?? DEFAULT_TRAIL_LENGTH,
+        enabled: fitted.enabled,
+        length: fitted.length,
         fadeAlpha: config.trails.fadeAlpha ?? true,
       };
     }
