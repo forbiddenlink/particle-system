@@ -2,6 +2,7 @@
 // Uses WebGPU compute shaders via TSL for million-particle simulations
 
 export { ParticleSystem, getMinMax } from './ParticleSystem.js';
+export { fitTrailBudget, MAX_TRAIL_POSITIONS } from './trail-budget.js';
 
 export {
   Emitter,

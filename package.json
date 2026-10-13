@@ -2,7 +2,7 @@
   "name": "particle-system",
   "version": "1.0.3",
   "private": true,
-  "description": "Next-generation 3D particle system creator with WebGPU compute shaders and node-based visual editor",
+  "description": "3D particle system with WebGPU compute shaders and a WebGL2 fallback, presets, pointer forces, audio reactivity, trails, and recording",
   "author": "Nova Particles Team",
   "license": "MIT",
   "scripts": {
