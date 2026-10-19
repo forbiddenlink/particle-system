@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.5](https://github.com/forbiddenlink/particle-system/compare/v1.0.4...v1.0.5) (2026-10-19)
+
+
+### Bug Fixes
+
+* **deps:** clear transitive CVEs with bounded overrides ([#69](https://github.com/forbiddenlink/particle-system/issues/69)) ([8e599f1](https://github.com/forbiddenlink/particle-system/commit/8e599f129308870aa7b9aa4f87ca565daf4218a0))
+
 ## [1.0.4](https://github.com/forbiddenlink/particle-system/compare/v1.0.3...v1.0.4) (2026-10-13)
 
 
