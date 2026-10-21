@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.6](https://github.com/forbiddenlink/particle-system/compare/v1.0.5...v1.0.6) (2026-10-21)
+
+
+### Bug Fixes
+
+* **deps:** bump vite to patched version ([#74](https://github.com/forbiddenlink/particle-system/issues/74)) ([cc54c8e](https://github.com/forbiddenlink/particle-system/commit/cc54c8e2c7c005b92d989314d0d5d23c8907981a))
+
 ## [1.0.5](https://github.com/forbiddenlink/particle-system/compare/v1.0.4...v1.0.5) (2026-10-19)
 
 
