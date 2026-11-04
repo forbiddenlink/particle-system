@@ -1,6 +1,6 @@
 :root {
   /* Typography */
-  --font-display: "Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Chakra Petch", "Arial Narrow", sans-serif;
   --font-sans: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
 
@@ -25,40 +25,36 @@
   --controls-height: 44px;
   --preset-row-offset: calc(var(--space-5) + var(--controls-height) + var(--space-3));
 
-  /* Neutrals — cool violet-gray charcoal (hue 285), harmonizes with the
-     purple scene. Very low chroma = neutral-with-a-hint, not a "purple UI".
-     Flat, no glass. */
-  --color-bg: oklch(0.15 0.01 285);
-  --color-surface-1: oklch(0.21 0.012 285 / 0.92);
-  --color-surface-2: oklch(0.28 0.014 285 / 0.6);
-  --color-surface-3: oklch(0.32 0.016 285 / 0.8);
-  --color-border: oklch(0.44 0.02 285 / 0.35);
-  --color-border-subtle: oklch(0.44 0.02 285 / 0.2);
-  --color-tick: oklch(0.44 0.02 285 / 0.5);
+  /* Graphite neutrals (hue 125, near-zero chroma) with one electric lime accent.
+     The lime is the colour of the simulation itself: the default particles are
+     drawn in it, so the UI and the scene read as one instrument. */
+  --color-bg: oklch(0.16 0.006 125);
+  --color-surface-1: oklch(0.2 0.007 125 / 0.94);
+  --color-surface-2: oklch(0.27 0.008 125 / 0.7);
+  --color-surface-3: oklch(0.32 0.009 125 / 0.85);
+  --color-border: oklch(0.5 0.02 125 / 0.4);
+  --color-border-subtle: oklch(0.5 0.02 125 / 0.22);
+  --color-tick: oklch(0.55 0.03 125 / 0.55);
 
-  /* Text — cool neutrals */
-  --color-text: oklch(0.91 0.008 285);
-  --color-text-muted: oklch(0.66 0.014 285);
-  --color-text-subtle: oklch(0.52 0.014 285);
+  --color-text: oklch(0.94 0.01 125);
+  --color-text-muted: oklch(0.74 0.012 125);
+  --color-text-subtle: oklch(0.6 0.012 125);
 
-  /* Accent — refined matte violet (matches the scene). Desaturated vs. the
-     old neon #8b5cf6; no glow, no gradient — that's what kept it from slop. */
-  --color-primary: oklch(0.68 0.15 300);
-  --color-primary-hover: oklch(0.77 0.14 300);
-  --color-primary-muted: oklch(0.68 0.15 300 / 0.16);
+  --color-primary: oklch(0.9 0.21 124);
+  --color-primary-hover: oklch(0.95 0.17 124);
+  --color-primary-muted: oklch(0.9 0.21 124 / 0.14);
   --color-primary-glow: transparent;
 
-  /* Semantic */
-  --color-success: oklch(0.68 0.15 300);
-  --color-warning: oklch(0.78 0.14 75);
-  --color-error: oklch(0.65 0.19 25);
+  --color-success: oklch(0.9 0.21 124);
+  --color-warning: oklch(0.85 0.14 100);
+  --color-error: oklch(0.7 0.19 25);
 
-  /* Category colors (functional dots — kept legible, slightly muted) */
-  --color-category-fire: oklch(0.68 0.19 30);
-  --color-category-cosmic: oklch(0.7 0.13 300);
-  --color-category-energy: oklch(0.8 0.14 80);
-  --color-category-nature: oklch(0.75 0.15 150);
-  --color-category-weather: oklch(0.7 0.12 240);
+  /* Category dots: tonal lime steps, told apart by lightness, not hue */
+  --color-category-fire: oklch(0.97 0.1 124);
+  --color-category-cosmic: oklch(0.78 0.17 130);
+  --color-category-energy: oklch(0.9 0.21 124);
+  --color-category-nature: oklch(0.66 0.14 135);
+  --color-category-weather: oklch(0.82 0.04 125);
 
   /* Surfaces — sharp, instrument-like radii; no glow */
   --radius-sm: 3px;
@@ -66,7 +62,7 @@
   --radius-lg: 6px;
   --radius-full: 9999px;
   --blur-panel: 0px;
-  --shadow-panel: 0 10px 30px oklch(0.12 0.01 60 / 0.55);
+  --shadow-panel: 0 10px 30px oklch(0.1 0.006 125 / 0.6);
   --shadow-button: none;
   --shadow-button-hover: none;
   --shadow-glow: none;
@@ -145,7 +141,7 @@ canvas {
 #info {
   top: var(--space-5);
   left: var(--space-5);
-  max-width: 300px;
+  max-width: 320px;
 }
 
 /* Signature detail: viewfinder crop-marks at the four corners of the identity panel */
@@ -168,13 +164,13 @@ canvas {
 
 #info h1 {
   font-family: var(--font-display);
-  font-size: var(--text-h1);
-  font-weight: 500;
+  font-size: clamp(34px, 3.6vw, 48px);
+  font-weight: 700;
   margin-bottom: var(--space-3);
-  color: var(--color-text);
+  color: var(--color-primary);
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  line-height: 1.1;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
 }
 
 #info p {
@@ -242,7 +238,7 @@ canvas {
   flex: 0 0 auto;
 }
 
-/* Button base — flat ghost, uppercase micro-label. Amber only when active. */
+/* Button base — flat ghost, uppercase micro-label. Lime only when active. */
 .btn {
   background: transparent;
   color: var(--color-text-muted);
@@ -267,7 +263,7 @@ canvas {
   border-color: var(--color-border);
 }
 
-/* Toggled-on buttons (pause, pointer, audio, record, morph) read amber. */
+/* Toggled-on buttons (pause, pointer, audio, record, morph) read lime. */
 .btn[aria-pressed="true"] {
   background: var(--color-primary-muted);
   color: var(--color-primary);
@@ -590,7 +586,7 @@ input[type="checkbox"]:focus-visible {
   text-align: center;
   max-width: 500px;
   z-index: 1000;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid oklch(0.7 0.19 25 / 0.4);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
 }
 
@@ -642,7 +638,7 @@ input[type="checkbox"]:focus-visible {
   }
 
   #info h1 {
-    font-size: 24px;
+    font-size: 34px;
   }
 
   /* Top-right, one row, so it never sits under the controls bar. */
@@ -689,11 +685,6 @@ input[type="checkbox"]:focus-visible {
     gap: var(--space-3);
     justify-content: center;
     flex-wrap: wrap;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 
   .site-link {
@@ -713,7 +704,7 @@ input[type="checkbox"]:focus-visible {
 /* Very small screens */
 @media (max-width: 480px) {
   #info h1 {
-    font-size: 20px;
+    font-size: 30px;
   }
 
   #info p {
