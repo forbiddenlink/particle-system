@@ -1,6 +1,6 @@
 :root {
   /* Typography */
-  --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --font-display: "Chakra Petch", "Arial Narrow", sans-serif;
   --font-sans: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
 
@@ -164,13 +164,13 @@ canvas {
 
 #info h1 {
   font-family: var(--font-display);
-  font-size: clamp(44px, 5.2vw, 72px);
-  font-weight: 800;
+  font-size: clamp(34px, 3.6vw, 48px);
+  font-weight: 700;
   margin-bottom: var(--space-3);
   color: var(--color-primary);
   text-transform: uppercase;
-  letter-spacing: 0.01em;
-  line-height: 0.88;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
 }
 
 #info p {
@@ -638,7 +638,7 @@ input[type="checkbox"]:focus-visible {
   }
 
   #info h1 {
-    font-size: 44px;
+    font-size: 34px;
   }
 
   /* Top-right, one row, so it never sits under the controls bar. */
@@ -704,7 +704,7 @@ input[type="checkbox"]:focus-visible {
 /* Very small screens */
 @media (max-width: 480px) {
   #info h1 {
-    font-size: 38px;
+    font-size: 30px;
   }
 
   #info p {
