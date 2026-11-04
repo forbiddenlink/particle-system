@@ -65,7 +65,7 @@ const presetSupernova = document.getElementById("preset-supernova")!;
 
 // Scene setup
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a1a);
+scene.background = new THREE.Color(0x0c0e0a);
 
 // Camera
 const camera = new THREE.PerspectiveCamera(
@@ -148,7 +148,7 @@ controls.dampingFactor = 0.05;
 controls.target.set(0, 2, 0);
 
 // Grid helper for reference
-const gridHelper = new THREE.GridHelper(20, 20, 0x333366, 0x222244);
+const gridHelper = new THREE.GridHelper(20, 20, 0x3a4226, 0x1f2418);
 scene.add(gridHelper);
 
 // Particle system
@@ -325,7 +325,7 @@ async function createParticleSystem(count: number): Promise<void> {
     lifetime: { min: 2, max: 5 },
     startSpeed: { min: 2, max: 6 },
     startSize: { min: 0.08, max: 0.2 },
-    startColor: new THREE.Color(0x8b5cf6),
+    startColor: new THREE.Color(0xc4f135),
     emissionRate: count / 4,
     emitter: {
       type: "sphere",
