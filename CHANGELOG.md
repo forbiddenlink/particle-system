@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/forbiddenlink/particle-system/compare/v1.0.6...v1.1.0) (2026-11-04)
+
+
+### Features
+
+* **web:** graphite and electric-lime identity around the live simulation ([#83](https://github.com/forbiddenlink/particle-system/issues/83)) ([cacbb28](https://github.com/forbiddenlink/particle-system/commit/cacbb28bf9e309a59fd25354eea44e007e59ba02))
+
 ## [1.0.6](https://github.com/forbiddenlink/particle-system/compare/v1.0.5...v1.0.6) (2026-10-21)
 
 
