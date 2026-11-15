@@ -1,14 +1,12 @@
-# ✨ Nova Particles
+# Nova Particles
 
 ![Nova Particles Banner](docs/images/banner.png)
 
-> **GPU Particle System for the Browser**
->
-> Simulate large particle systems in your browser with WebGPU compute shaders and a WebGL2 fallback.
+A GPU particle system for the browser. It runs particle simulation in WebGPU compute shaders, with a WebGL2 fallback in the demo app.
 
-Nova Particles is a particle engine built with **Three.js** and **WebGPU**. Using compute shaders (via TSL, the Three.js Shading Language), it runs particle physics on the GPU. The demo app falls back to WebGL2 when WebGPU is unavailable.
+Nova Particles is a particle engine built with Three.js and WebGPU. Using compute shaders (via TSL, the Three.js Shading Language), it runs particle physics on the GPU. The demo app falls back to WebGL2 when WebGPU is unavailable.
 
-## 🚀 Features
+## Features
 
 - **GPU compute**: particle state updates run in WebGPU compute shaders. The UI exposes up to 1M particles; frame rate depends on your GPU and browser, and no benchmark is published yet.
 - **WebGPU with WebGL2 fallback**: the demo app uses the WebGPU backend when present and Three.js's WebGL2 backend otherwise.
@@ -20,7 +18,7 @@ Nova Particles is a particle engine built with **Three.js** and **WebGPU**. Usin
 - **Trails**: line-segment trails with alpha fade. Trail memory is capped at 2M positions (particle count x trail length); larger configurations get a shorter trail length, or trails are disabled.
 - **Share and record**: copy a link that encodes the configuration, or capture the canvas to WebM.
 
-## 🗺️ Roadmap
+## Roadmap
 
 Not implemented yet. Tracked as GitHub issues:
 
@@ -32,14 +30,14 @@ Not implemented yet. Tracked as GitHub issues:
 - Emit from mesh surfaces and vertices ([#25](https://github.com/forbiddenlink/particle-system/issues/25))
 - Soft particles with depth-aware alpha fade ([#24](https://github.com/forbiddenlink/particle-system/issues/24))
 
-## 📦 Tech Stack
+## Tech stack
 
 - **Core**: [Three.js](https://threejs.org/) (WebGPU Renderer)
 - **Language**: TypeScript
-- **Build Tool**: Vite (for the web app)
-- **Package Manager**: pnpm
+- **Build tool**: Vite (web app)
+- **Package manager**: pnpm
 
-## 📚 Use as a Library
+## Use as a library
 
 The engine ships as [`@nova-particles/core`](https://www.npmjs.com/package/@nova-particles/core) (WebGPU + Three.js TSL):
 
@@ -58,13 +56,13 @@ system.setGravity(0, -9.8, 0);
 
 `three` is a peer dependency (`>=0.170.0`). The package is ESM-only and side-effect free.
 
-## 🛠️ Getting Started
+## Getting started
 
 ### Prerequisites
 
-- **Node.js**: v18+
-- **pnpm**: v10+
-- **Browser**: Chrome 113+, Edge 113+, or Safari 18+ for WebGPU. Other browsers with WebGL2 use the fallback backend.
+- **Node.js**: 18 or newer (`engines`)
+- **pnpm**: 10.34.5 or newer (`engines`)
+- **Browser**: Chrome 113+, Edge 113+, or Safari 26+ for WebGPU. Other browsers with WebGL2 use the fallback backend.
 
 ### Installation
 
@@ -87,7 +85,7 @@ system.setGravity(0, -9.8, 0);
 4. **Open in browser:**
    Navigate to `http://localhost:3000` to see the demo.
 
-## 🎮 Usage Controls
+## Controls
 
 - **Left Click + Drag**: Rotate camera
 - **Right Click + Drag**: Pan camera
@@ -103,7 +101,7 @@ system.setGravity(0, -9.8, 0);
   - **Share**: copy a link that encodes the exact configuration
   - **Record**: capture the canvas to a downloadable WebM video
 
-## 🧩 Architecture
+## Architecture
 
 Nova Particles uses a **Structure of Arrays (SoA)** approach in GPU storage buffers to maximize cache efficiency.
 
@@ -113,6 +111,6 @@ Nova Particles uses a **Structure of Arrays (SoA)** approach in GPU storage buff
 
 See [docs/architecture.md](docs/architecture.md) for the GPU pipeline flow and core module map (Mermaid diagrams).
 
-## 📄 License
+## License
 
-MIT © Nova Particles Team
+MIT. See [LICENSE](LICENSE).
