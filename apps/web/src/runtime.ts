@@ -21,6 +21,16 @@ export interface BackendInfo {
  * class. `constructor.name` is minified in production builds, so it can never
  * be used to tell WebGPU from WebGL.
  */
+/**
+ * Trails need the trail compute pass, which touches more storage buffers than the
+ * 4 transform feedback outputs the WebGL2 fallback is guaranteed to have.
+ */
+export function trailsSupported(kind: BackendInfo["kind"]): boolean {
+  return kind !== "webgl";
+}
+
+export const TRAILS_UNSUPPORTED_REASON = "Trails need WebGPU";
+
 export function describeBackend(backend: unknown): BackendInfo {
   const flags = backend as { isWebGPUBackend?: boolean; isWebGLBackend?: boolean } | null | undefined;
   if (flags?.isWebGPUBackend === true) return { kind: "webgpu", label: "WebGPU ✓" };

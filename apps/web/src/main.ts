@@ -19,6 +19,8 @@ import {
   readWebGLLimits,
   safePixelRatio,
   webglComputeShortfall,
+  trailsSupported,
+  TRAILS_UNSUPPORTED_REASON,
 } from "./runtime.js";
 import "./style.css";
 
@@ -173,6 +175,7 @@ scene.add(gridHelper);
 let particleSystem: ParticleSystem | null = null;
 let currentParticleCount = parseInt(particleSlider.value, 10);
 let trailsEnabled = false;
+let trailsAllowed = true;
 const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 // Honor prefers-reduced-motion: start paused (a still frame) with Resume one click away.
 let isPaused = reducedMotionQuery.matches;
@@ -923,6 +926,21 @@ async function init(): Promise<void> {
     applyPixelRatio();
   }
 
+  // Trails need more compute outputs than the WebGL2 fallback guarantees, so keep
+  // them off there and say why.
+  trailsAllowed = trailsSupported(backend.kind);
+  if (!trailsAllowed) {
+    trailsCheckbox.checked = false;
+    trailsCheckbox.disabled = true;
+    trailsCheckbox.title = TRAILS_UNSUPPORTED_REASON;
+    trailsCheckbox.setAttribute("aria-describedby", "trails-note");
+    const note = document.createElement("span");
+    note.id = "trails-note";
+    note.className = "control-note";
+    note.textContent = TRAILS_UNSUPPORTED_REASON;
+    trailsCheckbox.insertAdjacentElement("afterend", note);
+  }
+
   // Debug step
   const { runDebugCompute } = await import('./debug-compute');
   const debugSuccess = await runDebugCompute(renderer);
@@ -1025,8 +1043,8 @@ function applyShareStateFromUrl(): boolean {
   dragSlider.value = String(state.drag);
   windSlider.value = String(state.wind);
   vortexSlider.value = String(state.vortex);
-  trailsCheckbox.checked = state.trails;
-  trailsEnabled = state.trails;
+  trailsCheckbox.checked = state.trails && trailsAllowed;
+  trailsEnabled = state.trails && trailsAllowed;
 
   let presetConfig = state.preset ? findPresetConfigByName(state.preset) : undefined;
   if (presetConfig?.flashing && !flashingAcknowledged) {

@@ -4,6 +4,7 @@ import {
   safePixelRatio,
   REQUIRED_TRANSFORM_FEEDBACK_ATTRIBS,
   webglComputeShortfall,
+  trailsSupported,
   FailureStreak,
   FrameClock,
   MAX_FRAME_DT,
@@ -148,5 +149,12 @@ describe("describeInitFailure", () => {
   });
   it("passes other messages through", () => {
     expect(describeInitFailure("boom")).toBe("boom");
+  });
+});
+
+describe("trailsSupported", () => {
+  it("allows trails on WebGPU only", () => {
+    expect(trailsSupported("webgpu")).toBe(true);
+    expect(trailsSupported("webgl")).toBe(false);
   });
 });
