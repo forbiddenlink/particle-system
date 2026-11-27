@@ -9,8 +9,6 @@ export interface ParticleBuffers {
   position: THREE.StorageBufferAttribute;
   velocity: THREE.StorageBufferAttribute;
   color: THREE.StorageBufferAttribute;
-  life: THREE.StorageBufferAttribute;
-  size: THREE.StorageBufferAttribute;
   rotation: THREE.StorageBufferAttribute;
   /** Per-particle morph target position (xyz, w=1 when set). */
   target: THREE.StorageBufferAttribute;
@@ -28,8 +26,6 @@ export interface ParticleStorageNodes {
   position: THREE.StorageBufferNode<'vec4'>;
   velocity: THREE.StorageBufferNode<'vec4'>;
   color: THREE.StorageBufferNode<'vec4'>;
-  life: THREE.StorageBufferNode<'vec2'>;
-  size: THREE.StorageBufferNode<'float'>;
   rotation: THREE.StorageBufferNode<'float'>;
   target: THREE.StorageBufferNode<'vec4'>;
 }
@@ -61,12 +57,12 @@ export interface TrailStorageNodes {
  */
 export function createParticleBuffers(maxParticles: number): ParticleBuffers {
   return {
-    // Position: vec4 per particle (xyz, padding)
+    // Position: vec4 per particle (xyz, w = current life)
     position: new THREE.StorageBufferAttribute(
       new Float32Array(maxParticles * 4),
       4
     ),
-    // Velocity: vec4 per particle (xyz, padding)
+    // Velocity: vec4 per particle (xyz, w = max life)
     velocity: new THREE.StorageBufferAttribute(
       new Float32Array(maxParticles * 4),
       4
@@ -75,16 +71,6 @@ export function createParticleBuffers(maxParticles: number): ParticleBuffers {
     color: new THREE.StorageBufferAttribute(
       new Float32Array(maxParticles * 4),
       4
-    ),
-    // Life: vec2 per particle (currentLife, maxLife)
-    life: new THREE.StorageBufferAttribute(
-      new Float32Array(maxParticles * 2),
-      2
-    ),
-    // Size: float per particle
-    size: new THREE.StorageBufferAttribute(
-      new Float32Array(maxParticles),
-      1
     ),
     // Rotation: float per particle
     rotation: new THREE.StorageBufferAttribute(
@@ -110,8 +96,6 @@ export function createParticleStorageNodes(
     position: storage(buffers.position, 'vec4', maxParticles),
     velocity: storage(buffers.velocity, 'vec4', maxParticles),
     color: storage(buffers.color, 'vec4', maxParticles),
-    life: storage(buffers.life, 'vec2', maxParticles),
-    size: storage(buffers.size, 'float', maxParticles),
     rotation: storage(buffers.rotation, 'float', maxParticles),
     target: storage(buffers.target, 'vec4', maxParticles),
   };
@@ -177,8 +161,6 @@ export function disposeParticleBuffers(buffers: ParticleBuffers): void {
   buffers.position.array = new Float32Array(0);
   buffers.velocity.array = new Float32Array(0);
   buffers.color.array = new Float32Array(0);
-  buffers.life.array = new Float32Array(0);
-  buffers.size.array = new Float32Array(0);
   buffers.rotation.array = new Float32Array(0);
 }
 

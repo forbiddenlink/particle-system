@@ -725,3 +725,9 @@ input[type="checkbox"]:focus-visible {
     font-size: var(--text-caption);
   }
 }
+
+.control-note {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
