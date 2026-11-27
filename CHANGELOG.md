@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.1](https://github.com/forbiddenlink/particle-system/compare/v1.1.0...v1.1.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **core:** run the WebGL2 fallback within 4 transform feedback outputs ([#90](https://github.com/forbiddenlink/particle-system/issues/90)) ([e389696](https://github.com/forbiddenlink/particle-system/commit/e389696ea0ced70ca7753355f7eff4afab87867d))
+* **core:** use mod() for the trail ring buffer wrap ([#91](https://github.com/forbiddenlink/particle-system/issues/91)) ([52d1a4c](https://github.com/forbiddenlink/particle-system/commit/52d1a4ceff0c3e2306d0fa5e8b867e5b94c2aec5))
+* **web:** check WebGL2 compute limits up front, clearer GPU-failure panel ([#88](https://github.com/forbiddenlink/particle-system/issues/88)) ([ac43483](https://github.com/forbiddenlink/particle-system/commit/ac43483a49fb33343504296df0c0ddc5e9b1ef85))
+
 ## [1.1.0](https://github.com/forbiddenlink/particle-system/compare/v1.0.6...v1.1.0) (2026-11-04)
 
 
