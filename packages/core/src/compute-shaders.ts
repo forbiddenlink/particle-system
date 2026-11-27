@@ -60,6 +60,9 @@ export function createTrailCompute(
   } = storageNodes;
 
   const trailLengthUniform = uniform(trailLength);
+  // Integer modulo for the ring buffer wrap. Three 0.186 has no modInt(); `mod`
+  // on two integer operands emits an integer `%`.
+  const trailLengthInt = int(trailLength);
   const fadeAlphaUniform = uniform(fadeAlpha ? 1 : 0);
 
   return (Fn(() => {
@@ -88,7 +91,7 @@ export function createTrailCompute(
       trailStorage.element(writeIdx).assign(vec4(pos.xyz, 1.0));
 
       // Increment trail index (wrap around)
-      const newTrailIdx = trailIdx.add(int(1)).modInt(trailLengthUniform);
+      const newTrailIdx = trailIdx.add(int(1)).mod(trailLengthInt);
       trailIndexStorage.element(i).assign(newTrailIdx);
 
       // Flatten trail to line segment vertices
@@ -103,8 +106,8 @@ export function createTrailCompute(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Loop({ start: int(0), end: segmentsPerParticle, type: 'int', condition: '<' }, ({ i: j }: { i: any }) => {
         // Read positions from ring buffer in order (oldest first)
-        const idx0 = particleTrailBase.add(newTrailIdx.add(j).modInt(trailLengthUniform));
-        const idx1 = particleTrailBase.add(newTrailIdx.add(j).add(int(1)).modInt(trailLengthUniform));
+        const idx0 = particleTrailBase.add(newTrailIdx.add(j).mod(trailLengthInt));
+        const idx1 = particleTrailBase.add(newTrailIdx.add(j).add(int(1)).mod(trailLengthInt));
 
         const pos0 = trailStorage.element(idx0);
         const pos1 = trailStorage.element(idx1);
