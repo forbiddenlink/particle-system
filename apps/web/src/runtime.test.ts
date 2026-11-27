@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   describeInitFailure,
   safePixelRatio,
+  REQUIRED_TRANSFORM_FEEDBACK_ATTRIBS,
   webglComputeShortfall,
   FailureStreak,
   FrameClock,
@@ -94,13 +95,22 @@ describe("FailureStreak", () => {
 describe("webglComputeShortfall", () => {
   it("accepts a driver with enough transform feedback outputs", () => {
     expect(webglComputeShortfall({ maxTransformFeedbackSeparateAttribs: 8 })).toBeNull();
-    expect(webglComputeShortfall({ maxTransformFeedbackSeparateAttribs: 5 })).toBeNull();
+    expect(webglComputeShortfall({ maxTransformFeedbackSeparateAttribs: 4 })).toBeNull();
   });
 
-  it("explains the shortfall for the WebGL2 minimum of 4", () => {
-    const msg = webglComputeShortfall({ maxTransformFeedbackSeparateAttribs: 4 });
+  it("accepts the WebGL2 spec minimum, which SwiftShader reports", () => {
+    expect(REQUIRED_TRANSFORM_FEEDBACK_ATTRIBS).toBe(4);
+    expect(
+      webglComputeShortfall({
+        maxTransformFeedbackSeparateAttribs: REQUIRED_TRANSFORM_FEEDBACK_ATTRIBS,
+      }),
+    ).toBeNull();
+  });
+
+  it("explains the shortfall when a driver offers fewer than 4", () => {
+    const msg = webglComputeShortfall({ maxTransformFeedbackSeparateAttribs: 3 });
+    expect(msg).toContain("3");
     expect(msg).toContain("4");
-    expect(msg).toContain("5");
   });
 });
 

@@ -9,7 +9,6 @@ import {
   uniformArray,
   vec3,
   vec4,
-  vec2,
   float,
   sin,
   cos,
@@ -78,8 +77,6 @@ export class ParticleSystem extends THREE.Object3D {
   private positionStorage: THREE.StorageBufferNode<'vec4'> | null = null;
   private velocityStorage: THREE.StorageBufferNode<'vec4'> | null = null;
   private colorStorage: THREE.StorageBufferNode<'vec4'> | null = null;
-  private lifeStorage: THREE.StorageBufferNode<'vec2'> | null = null;
-  private sizeStorage: THREE.StorageBufferNode<'float'> | null = null;
 
 
   // Trail storage nodes
@@ -292,8 +289,6 @@ export class ParticleSystem extends THREE.Object3D {
     this.positionStorage = this.particleStorage.position;
     this.velocityStorage = this.particleStorage.velocity;
     this.colorStorage = this.particleStorage.color;
-    this.lifeStorage = this.particleStorage.life;
-    this.sizeStorage = this.particleStorage.size;
 
     // Trail buffers - only allocate when trails are enabled to save GPU memory
     // For 100K particles with 8 trail positions, this saves ~9.6MB of GPU memory
@@ -356,7 +351,8 @@ export class ParticleSystem extends THREE.Object3D {
     const positionStorage = this.positionStorage!;
 
     // Position node for Points
-    this.material.positionNode = positionStorage.element(vertexIndex);
+    // w carries the particle's remaining life, so only xyz is a position
+    this.material.positionNode = positionStorage.element(vertexIndex).xyz;
 
     this.add(this.mesh);
 
@@ -415,6 +411,13 @@ export class ParticleSystem extends THREE.Object3D {
     this.add(this.trailMesh);
   }
 
+  /** True when the renderer fell back to the WebGL2 backend (no WebGPU). */
+  private usesWebGLBackend(): boolean {
+    const backend = (this.renderer as unknown as { backend?: { isWebGLBackend?: boolean } } | null)
+      ?.backend;
+    return backend?.isWebGLBackend === true;
+  }
+
   /**
    * Create compute shaders for particle simulation
    */
@@ -425,9 +428,14 @@ export class ParticleSystem extends THREE.Object3D {
     const positionStorage = this.positionStorage!;
     const velocityStorage = this.velocityStorage!;
     const colorStorage = this.colorStorage!;
-    const lifeStorage = this.lifeStorage!;
-    const sizeStorage = this.sizeStorage!;
     const targetStorage = this.particleStorage!.target;
+
+    // Per-particle index inside the compute kernels. WebGPU runs a compute
+    // dispatch where instanceIndex counts invocations. The WebGL2 fallback runs
+    // compute as transform feedback over `drawArrays` points, where
+    // gl_InstanceID is always 0 and gl_VertexID is the particle index, so every
+    // particle would otherwise get the same seed and state.
+    const particleIndex = this.usesWebGLBackend() ? vertexIndex : instanceIndex;
 
     const uniforms = this.uniforms;
     this.sizeOverLifetimeUniform = uniformArray<'float'>(this.sizeOverLifetimeSamples, 'float');
@@ -438,7 +446,7 @@ export class ParticleSystem extends THREE.Object3D {
 
     // Initialize compute - sets up initial particle state
     this.initCompute = (Fn(() => {
-      const i = instanceIndex;
+      const i = particleIndex;
       const seed = float(i).add(uniforms.time);
       
       // Random position in sphere (simplified)
@@ -451,7 +459,12 @@ export class ParticleSystem extends THREE.Object3D {
       const z = r.mul(cos(phi)).mul(sin(theta));
       
       const pos = vec3(x, y, z).add(uniforms.emitterPosition);
-      positionStorage.element(i).assign(vec4(pos, 1.0));
+      // Life: current in position.w, max in velocity.w. Packing it into the
+      // two buffers we already write keeps the update pass at 4 transform
+      // feedback outputs (position, velocity, color, morph target), the WebGL2
+      // minimum, so the fallback backend can run it.
+      const life = mix(uniforms.lifetime.x, uniforms.lifetime.y, rand(seed.add(7.0)));
+      positionStorage.element(i).assign(vec4(pos, life));
       
       // Random velocity
       const speed = mix(uniforms.startSpeed.x, uniforms.startSpeed.y, rand(seed.add(3.0)));
@@ -460,43 +473,36 @@ export class ParticleSystem extends THREE.Object3D {
       const vy = rand(seed.add(5.0)).sub(0.5).mul(2.0);
       const vz = rand(seed.add(6.0)).sub(0.5).mul(2.0);
       const vel = normalize(vec3(vx, vy, vz)).mul(speed);
-      velocityStorage.element(i).assign(vec4(vel, 0.0));
-      
-      // Life
-      const life = mix(uniforms.lifetime.x, uniforms.lifetime.y, rand(seed.add(7.0)));
-      lifeStorage.element(i).assign(vec2(life, life)); // current, max
+      velocityStorage.element(i).assign(vec4(vel, life));
       
       // Color
       colorStorage.element(i).assign(uniforms.startColor);
-      
-      // Size
-      const size = mix(uniforms.startSize.x, uniforms.startSize.y, rand(seed.add(8.0)));
-      sizeStorage.element(i).assign(size);
       
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     })() as any).compute(count);
 
     // Update compute - runs every frame to simulate particles
     this.updateCompute = (Fn(() => {
-        const i = instanceIndex;
+        const i = particleIndex;
         
         // Read current state
         const pos = positionStorage.element(i);
         const vel = velocityStorage.element(i);
-        const life = lifeStorage.element(i);
+        // Life lives in the w components: current = pos.w, max = vel.w
         const dt = uniforms.deltaTime;
         
         // Decrease life
-        life.x.subAssign(dt);
+        pos.w.subAssign(dt);
         
         // Check if dead
-        If(life.x.lessThan(0.0), () => {
+        If(pos.w.lessThan(0.0), () => {
             // Respawn
             const seed = float(i).add(uniforms.time).add(100.0);
             
             // Reset life
             const newLife = mix(uniforms.lifetime.x, uniforms.lifetime.y, rand(seed));
-            life.assign(vec2(newLife, newLife));
+            pos.w.assign(newLife);
+            vel.w.assign(newLife);
             
             // Reset position (emitter)
             const r = rand(seed.add(1.0)).pow(1.0/3.0).mul(uniforms.emitterRadius);
@@ -516,14 +522,12 @@ export class ParticleSystem extends THREE.Object3D {
             const vz = rand(seed.add(7.0)).sub(0.5).mul(2.0);
             vel.xyz.assign(normalize(vec3(vx, vy, vz)).mul(speed));
             
-            // Reset Color and Size
+            // Reset Color
             If(uniforms.useColorOverLifetime.greaterThan(0), () => {
               colorStorage.element(i).assign(this.colorOverLifetimeUniform!.element(int(0)));
             }).Else(() => {
               colorStorage.element(i).assign(uniforms.startColor);
             });
-            const size = mix(uniforms.startSize.x, uniforms.startSize.y, rand(seed.add(8.0)));
-            sizeStorage.element(i).assign(size);
             
         }).Else(() => {
             // Apply Physics
@@ -592,7 +596,7 @@ export class ParticleSystem extends THREE.Object3D {
 
             // Apply color and visual intensity over lifetime
             const normalizedAge = clamp(
-              float(1.0).sub(life.x.div(max(life.y, float(0.0001)))),
+              float(1.0).sub(pos.w.div(max(vel.w, float(0.0001)))),
               float(0.0),
               float(0.9999),
             );
@@ -624,9 +628,6 @@ export class ParticleSystem extends THREE.Object3D {
                 colorStorage.element(i).assign(uniforms.startColor);
               });
             });
-            
-            // Validating w component for alignment, though for pos it's 1.0
-            pos.w.assign(1.0);
         });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -647,7 +648,6 @@ export class ParticleSystem extends THREE.Object3D {
       {
         position: this.positionStorage!,
         color: this.colorStorage!,
-        life: this.lifeStorage!,
         trail: this.trailStorage!,
         trailIndex: this.trailIndexStorage!,
         trailVertex: this.trailVertexStorage!,
@@ -965,8 +965,6 @@ export class ParticleSystem extends THREE.Object3D {
     this.positionStorage = null;
     this.velocityStorage = null;
     this.colorStorage = null;
-    this.lifeStorage = null;
-    this.sizeStorage = null;
     this.trailStorage = null;
     this.trailIndexStorage = null;
     this.trailVertexStorage = null;

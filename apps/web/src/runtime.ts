@@ -79,11 +79,11 @@ export class FailureStreak {
 
 /**
  * Separate transform feedback outputs the particle update pass needs on the
- * WebGL2 fallback: one per storage buffer it writes (position, velocity,
- * color, life and size at minimum). WebGL2 only guarantees 4, and software GL
- * (SwiftShader) and many real drivers report exactly 4.
+ * WebGL2 fallback: one per storage buffer it writes (position, velocity, color
+ * and life). WebGL2 only guarantees 4, and software GL (SwiftShader) and many
+ * real drivers report exactly 4, so the update pass must never write a fifth.
  */
-export const REQUIRED_TRANSFORM_FEEDBACK_ATTRIBS = 5;
+export const REQUIRED_TRANSFORM_FEEDBACK_ATTRIBS = 4;
 
 export interface WebGLLimits {
   maxTransformFeedbackSeparateAttribs: number;

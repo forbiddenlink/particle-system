@@ -22,7 +22,6 @@ import {
 export interface TrailComputeStorageNodes {
   position: StorageBufferNode<'vec4'>;
   color: StorageBufferNode<'vec4'>;
-  life: StorageBufferNode<'vec2'>;
   trail: StorageBufferNode<'vec4'>;
   trailIndex: StorageBufferNode<'uint'>;
   trailVertex: StorageBufferNode<'vec4'>;
@@ -54,7 +53,6 @@ export function createTrailCompute(
   const {
     position: positionStorage,
     color: colorStorage,
-    life: lifeStorage,
     trail: trailStorage,
     trailIndex: trailIndexStorage,
     trailVertex: trailVertexStorage,
@@ -77,8 +75,8 @@ export function createTrailCompute(
     // Get particle state
     const pos = positionStorage.element(i);
     const color = colorStorage.element(i);
-    const life = lifeStorage.element(i);
-    const currentLife = life.x;
+    // Current life is stored in position.w
+    const currentLife = pos.w;
 
     // Only update trails for alive particles
     If(currentLife.greaterThan(0), () => {
@@ -87,7 +85,7 @@ export function createTrailCompute(
 
       // Write current position to ring buffer at current index (pos is already vec4 from positionStorage)
       const writeIdx = particleTrailBase.add(trailIdx);
-      trailStorage.element(writeIdx).assign(pos);
+      trailStorage.element(writeIdx).assign(vec4(pos.xyz, 1.0));
 
       // Increment trail index (wrap around)
       const newTrailIdx = trailIdx.add(int(1)).modInt(trailLengthUniform);
