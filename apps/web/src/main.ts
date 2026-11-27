@@ -10,7 +10,16 @@ import {
   type Point3,
 } from "@nova-particles/core";
 import { applyPreset } from "./presets/AdvancedPresets.js";
-import { FailureStreak, FrameClock, describeBackend } from "./runtime.js";
+import {
+  FailureStreak,
+  FrameClock,
+  type WebGLLimits,
+  describeBackend,
+  describeInitFailure,
+  readWebGLLimits,
+  safePixelRatio,
+  webglComputeShortfall,
+} from "./runtime.js";
 import "./style.css";
 
 // DOM elements
@@ -89,7 +98,7 @@ document.body.appendChild(renderer.domElement);
 // blank or grid-only canvas. Idempotent: the first failure wins.
 let hasFailed = false;
 
-function failApp(reason: string): void {
+function failApp(reason: string, adviceText?: string): void {
   if (hasFailed) return;
   hasFailed = true;
   console.error("Nova Particles stopped:", reason);
@@ -108,6 +117,7 @@ function failApp(reason: string): void {
 
   const advice = document.createElement("p");
   advice.textContent =
+    adviceText ??
     "Try a browser with WebGPU support, such as a recent version of Chrome or Edge.";
 
   const detail = document.createElement("p");
@@ -138,7 +148,15 @@ renderer.debug.onShaderError = (gl, program) => {
 // Direct listener too, so a lost WebGL context is caught even if the hook changes.
 renderer.domElement.addEventListener("webglcontextlost", (event) => {
   event.preventDefault();
-  failApp("WebGL context lost");
+  failApp(
+    "The graphics context was lost.",
+    "The browser dropped the GPU connection, often after a driver reset or when the tab was in the background for a long time. Reload to start again.",
+  );
+});
+// If the browser restores the context there is nothing safe to resume (GPU buffers
+// are gone), so make sure the user is offered a clean reload.
+renderer.domElement.addEventListener("webglcontextrestored", () => {
+  console.warn("WebGL context restored; reload the page to resume the simulation.");
 });
 
 // Controls
@@ -852,7 +870,20 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  applyPixelRatio();
 });
+
+// GPU limits for the WebGL2 fallback, known once the renderer has initialised.
+let webglLimits: WebGLLimits | null = null;
+
+// Keep the drawing buffer inside the GPU limits (and never zero-sized).
+function applyPixelRatio(): void {
+  const desired = Math.min(window.devicePixelRatio, 2);
+  const ratio = webglLimits
+    ? safePixelRatio(desired, window.innerWidth, window.innerHeight, webglLimits)
+    : desired;
+  renderer.setPixelRatio(ratio);
+}
 
 // Read (and clear) the first pending WebGL error, or 0 when there is none or the
 // backend is not WebGL.
@@ -874,6 +905,23 @@ async function init(): Promise<void> {
   backendEl.textContent = backend.label;
 
   console.log(`Using backend: ${backend.label}`);
+
+  // Clamp the drawing buffer and refuse the WebGL2 fallback up front when the driver
+  // cannot run the compute passes, instead of issuing GL calls that raise error 1281.
+  const gl = (renderer as unknown as { backend?: { gl?: WebGL2RenderingContext } }).backend?.gl;
+  if (backend.kind === "webgl" && gl) {
+    const limits = readWebGLLimits(gl);
+    const shortfall = webglComputeShortfall(limits);
+    if (shortfall) {
+      failApp(
+        shortfall,
+        "The WebGL fallback on this device is too limited for GPU particle simulation. Try a browser with WebGPU support, such as a recent version of Chrome or Edge, on a device with a hardware GPU.",
+      );
+      return;
+    }
+    webglLimits = limits;
+    applyPixelRatio();
+  }
 
   // Debug step
   const { runDebugCompute } = await import('./debug-compute');
@@ -1218,5 +1266,6 @@ morphBtn.addEventListener("click", () => {
 
 init().catch((error: unknown) => {
   console.error("Initialization failed:", error);
-  failApp(error instanceof Error ? error.message : String(error));
+  backendEl.textContent = "None";
+  failApp(describeInitFailure(error instanceof Error ? error.message : String(error)));
 });

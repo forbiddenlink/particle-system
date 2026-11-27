@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeInitFailure,
+  safePixelRatio,
+  webglComputeShortfall,
   FailureStreak,
   FrameClock,
   MAX_FRAME_DT,
@@ -85,5 +88,55 @@ describe("FailureStreak", () => {
     streak.fail();
     streak.ok();
     expect(streak.fail()).toBe(false);
+  });
+});
+
+describe("webglComputeShortfall", () => {
+  it("accepts a driver with enough transform feedback outputs", () => {
+    expect(webglComputeShortfall({ maxTransformFeedbackSeparateAttribs: 8 })).toBeNull();
+    expect(webglComputeShortfall({ maxTransformFeedbackSeparateAttribs: 5 })).toBeNull();
+  });
+
+  it("explains the shortfall for the WebGL2 minimum of 4", () => {
+    const msg = webglComputeShortfall({ maxTransformFeedbackSeparateAttribs: 4 });
+    expect(msg).toContain("4");
+    expect(msg).toContain("5");
+  });
+});
+
+describe("safePixelRatio", () => {
+  const limits = { maxViewportDims: [8192, 8192] as [number, number], maxRenderbufferSize: 8192 };
+
+  it("keeps the desired ratio when the buffer fits", () => {
+    expect(safePixelRatio(2, 1440, 900, limits)).toBe(2);
+  });
+
+  it("reduces the ratio so the buffer stays within limits", () => {
+    expect(safePixelRatio(2, 6000, 900, limits)).toBeCloseTo(8192 / 6000);
+  });
+
+  it("never returns zero or NaN, even for a zero-size window", () => {
+    expect(safePixelRatio(0, 0, 0, limits)).toBe(1);
+    expect(safePixelRatio(Number.NaN, 100, 100, limits)).toBe(1);
+    expect(safePixelRatio(2, 0, 0, limits)).toBe(2);
+    expect(safePixelRatio(2, 1e9, 1e9, limits)).toBeGreaterThan(0);
+  });
+
+  it("ignores unknown (zero) limits", () => {
+    expect(safePixelRatio(2, 1000, 1000, { maxViewportDims: [0, 0], maxRenderbufferSize: 0 })).toBe(2);
+  });
+});
+
+describe("describeInitFailure", () => {
+  it("rewrites the three.js context creation error", () => {
+    expect(describeInitFailure("THREE.WebGLRenderer: Error creating WebGL context.")).toMatch(/turned off or unavailable/);
+  });
+  it("rewrites the null-context error three.js throws when WebGL is disabled", () => {
+    expect(
+      describeInitFailure("Cannot read properties of null (reading 'getSupportedExtensions')"),
+    ).toMatch(/turned off or unavailable/);
+  });
+  it("passes other messages through", () => {
+    expect(describeInitFailure("boom")).toBe("boom");
   });
 });
